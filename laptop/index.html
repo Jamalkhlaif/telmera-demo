@@ -510,7 +510,18 @@ h3.sec{font-size:var(--fs-micro);color:var(--dim);letter-spacing:.1em;text-trans
 .deskbar .dbT{margin-inline-start:var(--sp-8)}
 .deskbar b{color:var(--txt);font-size:var(--fs-label);min-width:3.4em}
 .rangeSeg button{letter-spacing:0}
-#page{padding:var(--sp-12);overflow:auto}
+#page{padding:var(--sp-12) 0;min-width:0}
+/* THE DESK GRID IS PLACED BY HAND, not left to auto-placement: the toolbar landed in an implicit
+   row at the BOTTOM of the page the moment it was added. Rail on the leading side spanning the
+   whole height; the strip, the toolbar, the page and the note stacked beside it. */
+.sc-laptop #app{grid-template-rows:auto auto auto 1fr auto}
+.sc-laptop .bar{grid-column:1 / -1;grid-row:1}
+.sc-laptop .rail{grid-column:1;grid-row:2 / -1}
+.sc-laptop .now{grid-column:2;grid-row:2}
+.sc-laptop .deskbar{grid-column:2;grid-row:3}
+.sc-laptop main{grid-column:2;grid-row:4;min-width:0}
+.sc-laptop footer{grid-column:2;grid-row:5}
+.sc-phone .deskbar{display:none}
 </style>
 <style>
 :root{
