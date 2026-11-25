@@ -3887,7 +3887,10 @@ window.TELMERA = window.TELMERA || {};
     T.cullWalls();                       /* the wall between you and the floor gets out of the way */
     T.animateMachines(dt / 1000);        /* only a RUNNING machine moves - machines.js owns that */
     T.renderer.render(T.scene, T.camera);
-    if (firstMs === null) { firstMs = now - t0; say(); }
+    /* ONE CLOCK. The rAF timestamp is the time the FRAME began, which can be a hair before the
+       moment we asked for it, and that printed a first frame of "-0.0 s". performance.now() at
+       the end of the first real render is the honest number: it includes the build. */
+    if (firstMs === null) { firstMs = Math.max(0, ms() - t0); say(); }
     frames++; fpsMs += dt;
     if (fpsMs > 1000) { fps = Math.round(frames * 1000 / fpsMs); frames = 0; fpsMs = 0; say(); }
   }
@@ -3896,9 +3899,10 @@ window.TELMERA = window.TELMERA || {};
 
   function say() {
     if (!perf || !T.renderer) return;
+    if (firstMs === null) { perf.textContent = ''; return; }   /* nothing measured yet: say nothing */
     perf.textContent = S('app.3d-perf', {
       ff: ((firstMs || 0) / 1000).toFixed(1),
-      fps: fps || '—',
+      fps: fps || '…',
       calls: T.renderer.info.render.calls,
       pr: T.renderer.getPixelRatio()
     });
@@ -3948,7 +3952,7 @@ window.TELMERA = window.TELMERA || {};
     need(function (ok) {
       if (!ok) { state = 'failed'; paint(); return; }
       state = '3d'; paint();             /* the host must be on screen before the canvas is sized */
-      if (!built) { t0 = ms(); firstMs = null; build(); say(); }
+      if (!built) { t0 = ms(); firstMs = null; build(); }
       start();
     });
   }
