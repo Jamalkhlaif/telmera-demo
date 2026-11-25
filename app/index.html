@@ -3798,20 +3798,34 @@ window.TELMERA = window.TELMERA || {};
     T.groups.blobs = T.instance(T.scene, geo, m, list, false);
   }
 
-  /* THE FRAMING IS COMPUTED, NOT TYPED. A distance picked by eye on a laptop crops the hall on a
-     portrait phone, because the horizontal field of view collapses with the aspect ratio. So the
-     hall's bounding sphere is fitted against whichever field of view is the NARROWER one. */
+  /* THE FRAMING IS COMPUTED, NOT TYPED, AND IT FITS THE BOX - NOT A SPHERE AROUND IT.
+     A distance picked by eye on a laptop crops the hall on a portrait phone, because the
+     horizontal field of view collapses with the aspect ratio. But a bounding SPHERE around a
+     72 x 36 x 9 m slab has a 41 m radius and leaves the hall swimming in empty frame - seen by
+     eye, not by a test. So the eight corners of the hall are pushed through the view matrix and
+     the camera is pulled back exactly far enough that the worst one is inside BOTH fields of
+     view. Moving along the view axis shifts every corner's depth by the same amount, which is
+     what makes this one line of arithmetic instead of a search. */
   function frame() {
     var L = T.layout, c = T.camera, o = T.controls;
     c.fov = phone() ? 50 : 42; c.updateProjectionMatrix();
-    var r = Math.sqrt(L.hall.w * L.hall.w + L.hall.h * L.hall.h) / 2 + 5;
-    var vf = c.fov * Math.PI / 180;
-    var hf = 2 * Math.atan(Math.tan(vf / 2) * Math.min(1, c.aspect || 1));
-    var d = r / Math.sin(Math.min(vf, hf) / 2);
-    var dir = new THREE.Vector3(-0.54, 0.47, 0.70).normalize().multiplyScalar(d);
-    c.position.set(dir.x, dir.y, dir.z);
-    o.target.set(0, 2.2, 0);
-    o.minDistance = 9; o.maxDistance = d * 1.6;
+    var tgt = new THREE.Vector3(0, 2.2, 0);
+    var dir = new THREE.Vector3(-0.54, 0.47, 0.70).normalize();
+    var vt = Math.tan(c.fov * Math.PI / 360);
+    var ht = vt * Math.max(0.2, c.aspect || 1);
+    var hw = L.hall.w / 2 + 1, hh = L.hall.h / 2 + 1, top = L.hall.clear_height_m + 2;
+    var d0 = 120, need = 0, i, j, k, p = new THREE.Vector3();
+    c.position.copy(tgt).addScaledVector(dir, d0);
+    c.lookAt(tgt); c.updateMatrixWorld();
+    for (i = -1; i <= 1; i += 2) for (j = 0; j <= 1; j++) for (k = -1; k <= 1; k += 2) {
+      p.set(i * hw, j * top, k * hh).applyMatrix4(c.matrixWorldInverse);
+      need = Math.max(need, Math.abs(p.x) / ht + p.z, Math.abs(p.y) / vt + p.z);
+    }
+    var d = (d0 + need) * 1.04;                  /* 4% of air, so nothing touches the edge */
+    c.position.copy(tgt).addScaledVector(dir, d);
+    c.lookAt(tgt);
+    o.target.copy(tgt);
+    o.minDistance = 9; o.maxDistance = d * 1.7;
     o.update();
   }
 
@@ -3954,6 +3968,9 @@ window.TELMERA = window.TELMERA || {};
       state = '3d'; paint();             /* the host must be on screen before the canvas is sized */
       if (!built) { t0 = ms(); firstMs = null; build(); }
       start();
+      /* on a phone the canvas begins below the fold, under the hint, the switch, the time bar
+         and the legend - a 3D view the reader has to go looking for is a 3D view nobody turns */
+      try { if (host && host.scrollIntoView) host.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
     });
   }
 
