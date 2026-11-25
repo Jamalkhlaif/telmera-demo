@@ -3814,7 +3814,9 @@ window.TELMERA = window.TELMERA || {};
     var vt = Math.tan(c.fov * Math.PI / 360);
     var ht = vt * Math.max(0.2, c.aspect || 1);
     var hw = L.hall.w / 2 + 1, hh = L.hall.h / 2 + 1, top = L.hall.clear_height_m + 2;
-    var d0 = 120, need = 0, i, j, k, p = new THREE.Vector3();
+    /* need starts at minus infinity, NOT at zero: the fit has to be able to move the camera
+       CLOSER than the probe distance, and a floor of 0 made d0 the answer every time */
+    var d0 = 120, need = -1e9, i, j, k, p = new THREE.Vector3();
     c.position.copy(tgt).addScaledVector(dir, d0);
     c.lookAt(tgt); c.updateMatrixWorld();
     /* three.js refreshes matrixWorldInverse inside render(), not here, so the first version of
@@ -3824,7 +3826,7 @@ window.TELMERA = window.TELMERA || {};
       p.set(i * hw, j * top, k * hh).applyMatrix4(c.matrixWorldInverse);
       need = Math.max(need, Math.abs(p.x) / ht + p.z, Math.abs(p.y) / vt + p.z);
     }
-    var d = (d0 + need) * 1.04;                  /* 4% of air, so nothing touches the edge */
+    var d = Math.max(22, (d0 + need) * 1.04);    /* 4% of air, so nothing touches the edge */
     c.position.copy(tgt).addScaledVector(dir, d);
     c.lookAt(tgt);
     o.target.copy(tgt);
