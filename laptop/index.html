@@ -500,6 +500,643 @@ h3.sec{font-size:var(--fs-micro);color:var(--dim);letter-spacing:.1em;text-trans
 .plant3d canvas{display:block;width:100%;height:56dvh;border-radius:var(--r-md);background:var(--bg);touch-action:none}
 .sc-laptop .plant3d canvas{height:68dvh}
 .perf{margin:var(--sp-8) 0 0;color:var(--dim2);font-size:var(--fs-micro);line-height:var(--lh-base);min-height:1.3em}
+
+/* ---------- the desk dashboard: the model's own page, inside the app shell ----------
+   #page carries nothing of its own but room to breathe and a scroll of its own; everything
+   inside it is styled by the model's stylesheet, sliced in by the build and scoped to #page. */
+.deskbar{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-8) var(--sp-12);
+         border-bottom:1px solid var(--line);color:var(--dim);font-size:var(--fs-micro)}
+.deskbar input[type="range"]{flex:1;min-height:var(--touch-min);accent-color:var(--accent);max-width:520px}
+.deskbar .dbT{margin-inline-start:var(--sp-8)}
+.deskbar b{color:var(--txt);font-size:var(--fs-label);min-width:3.4em}
+.rangeSeg button{letter-spacing:0}
+#page{padding:var(--sp-12);overflow:auto}
+</style>
+<style>
+:root{
+  --bg:#0d131c; --panel:#141c27; --panel2:#1b2533; --line:#2a3645;
+  --txt:#e8eef5; --dim:#93a2b4; --accent:#d98324;
+  --run:#3fb950; --idle:#4c8dff; --stop:#ff3b30;
+}
+*{box-sizing:border-box}
+
+#page #stage{position:fixed;inset:0}
+#page #view{display:block;width:100%;height:100%}
+
+
+/* ---- top bar ---- */
+#page #top{position:fixed;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:12px;
+  padding:0 16px;background:linear-gradient(180deg,rgba(13,19,28,.97),rgba(13,19,28,.78) 70%,transparent);z-index:9}
+#page #brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap;flex:0 0 auto}
+#page #brand b{font-size:17px;letter-spacing:.14em;color:var(--accent)}
+#page #plantName{font-size:13px;color:var(--dim)}
+#page #views{display:flex;flex:0 0 auto;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#page #views button{background:var(--panel);border:none;color:var(--dim);padding:6px 14px;font:inherit;font-size:12.5px;cursor:pointer}
+#page #views button.on{background:var(--txt);color:#17202b;font-weight:600}
+/* ================= THE TOP BAR: THREE CONTROLS, THREE QUESTIONS =================
+   It was ten pills in one scrolling row. Three separate controls now, because they answer three
+   different questions - where am I looking (view), who is looking (lens), over what period
+   (range). The lens menu is grouped by function, so it scales past ten without becoming a row
+   of tabs; five roles stay pinned beside it for the ones used every minute. */
+#page #lensWrap{position:relative;flex:0 0 auto}
+#page #lensBtn{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+  padding:5px 12px;height:32px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:13px;white-space:nowrap}
+#page #lensBtn:hover{border-color:#3b4a5c}
+#page #lensBtn em{font-style:normal;font-size:10.5px;color:var(--dim);letter-spacing:.04em}
+#page #lensBtn b{font-weight:650;color:var(--accent)}
+#page #lensBtn u{text-decoration:none;color:var(--dim);font-size:10px}
+#page #lensMenu{display:none;position:absolute;top:38px;inset-inline-start:0;z-index:12;min-width:248px;max-height:70vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:7px;box-shadow:0 18px 44px rgba(0,0,0,.55);
+  scrollbar-width:thin;scrollbar-color:#2a3645 transparent}
+#page #lensWrap.open #lensMenu{display:block}
+#page .lgHead{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#6f7e90;padding:9px 9px 4px}
+#page .lgItem{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;background:none;border:none;
+  color:var(--txt);font-family:inherit;text-align:start;padding:7px 9px;border-radius:7px;cursor:pointer}
+#page .lgItem:hover{background:var(--panel2)}
+#page .lgItem b{font-weight:500;font-size:13px}
+#page .lgItem em{font:10px ui-monospace,Consolas,monospace;font-style:normal;color:#6f7e90}
+#page .lgItem.on{background:var(--accent)}#page .lgItem.on b,#page .lgItem.on em{color:#17202b}
+#page .lgItem.on em{opacity:.75}
+
+#page #modelWrap{position:relative;flex:0 0 auto}
+#page #modelBtn{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);
+  border-radius:9px;color:var(--txt);padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+#page #modelBtn em{color:var(--dim);font-style:normal;font-size:11px}
+#page #modelBtn b{font-weight:600;letter-spacing:.2px}
+#page #modelBtn u{color:var(--dim);text-decoration:none;font-size:10px}
+#page #modelMenu{display:none;position:absolute;top:calc(100% + 6px);inset-inline-start:0;z-index:40;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:7px;
+  min-width:330px;box-shadow:0 18px 44px rgba(0,0,0,.45)}
+#page #modelWrap.open #modelMenu{display:block}
+#page .mdItem{display:block;width:100%;text-align:start;background:none;border:none;color:var(--txt);
+  font:inherit;padding:8px 9px;border-radius:8px;cursor:pointer;line-height:1.45}
+#page .mdItem:hover{background:rgba(255,255,255,.055)}
+#page .mdItem.on{background:var(--txt);color:#17202b}
+#page .mdItem b{display:block;font-size:12.5px;font-weight:600}
+#page .mdItem i{display:block;font-style:normal;font-size:11px;color:var(--dim);margin-top:2px}
+#page .mdItem.on i{color:#3b4654}
+#page .mdTier{display:flex;gap:6px;padding:3px 9px 7px}
+#page .mdTier button{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:7px;
+  color:var(--dim);font:inherit;font-size:11px;padding:4px 6px;cursor:pointer}
+#page .mdTier button.on{background:var(--txt);color:#17202b;border-color:var(--txt);font-weight:600}
+#page .mdFoot{margin-top:6px;padding:9px 9px 3px;border-top:1px solid var(--line)}
+#page .mdFoot h6{margin:0 0 7px;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--dim);font-weight:500}
+#page .mdF{display:flex;gap:9px;margin-bottom:6px;font-size:11.5px;line-height:1.5}
+#page .mdF em{font-style:normal;color:var(--dim);flex:0 0 96px}
+#page .mdF span{flex:1}
+#page .lgItem s{display:inline-block;text-decoration:none;font-size:9.5px;margin-inline-start:6px;
+  padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.07);color:var(--dim);vertical-align:1px}
+#page .lgItem s.lk{background:rgba(255,120,110,.16);color:#ffa39b}
+#page .lgItem s.pt{background:rgba(255,200,90,.15);color:#ffd27a}
+#page #lenses{display:flex;gap:5px;flex:0 1 auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-width:0}
+#page #lenses::-webkit-scrollbar{display:none}
+#page .lensbtn{background:none;border:1px solid transparent;color:var(--dim);
+  padding:5px 11px;border-radius:999px;font-size:12.5px;cursor:pointer;transition:.15s;font-family:inherit;white-space:nowrap}
+#page .lensbtn:hover{color:var(--txt);border-color:var(--line)}
+#page .lensbtn.on{background:rgba(217,131,36,.16);border-color:var(--accent);color:var(--accent);font-weight:600}
+#page #spacer{flex:1 1 auto;min-width:4px}
+
+/* the time range: now · today · week · month · quarter · year */
+#page #ranges{display:flex;flex:0 0 auto;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel)}
+#page .rbtn{background:none;border:none;border-inline-end:1px solid var(--line);color:var(--dim);
+  padding:0 11px;height:30px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+#page .rbtn:last-child{border-inline-end:none}
+#page .rbtn:hover{color:var(--txt);background:var(--panel2)}
+#page .rbtn.on{background:var(--txt);color:#17202b;font-weight:600}
+
+/* the supervisor's SECTION filter. It only exists for a lens that asked for it, so it does not
+   sit in the bar as a dead control on the other eleven. */
+#page #scopes{display:none;flex:0 1 auto;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-width:0;
+  padding-inline-start:8px;margin-inline-start:4px;border-inline-start:1px solid var(--line)}
+#page #scopes::-webkit-scrollbar{display:none}
+body.scoped #page #scopes{display:flex}
+#page .sbtn{background:var(--panel);border:1px solid var(--line);color:var(--dim);
+  padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+#page .sbtn:hover{color:var(--txt);border-color:#3b4a5c}
+#page .sbtn em{font-style:normal;font-size:10px;opacity:.65;margin-inline-start:3px}
+#page .sbtn.on{background:var(--accent);border-color:var(--accent);color:#17202b;font-weight:600}
+
+#page .iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--dim);width:34px;height:30px;
+  border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit;flex:0 0 auto}
+#page .iconbtn:hover{color:var(--txt)}
+#page .iconbtn.on{background:var(--accent);border-color:var(--accent);color:#17202b;font-weight:700}
+body.view-dash #page #labelBtn{display:none}
+#page .iconbtn.wide{width:auto;padding:0 10px;display:flex;align-items:center;gap:6px}
+#page .iconbtn.wide span{font-size:11.5px}
+/* the second screen: green edge once the two windows are actually talking */
+#page #popBtn.linked{border-color:var(--run);color:var(--run)}
+#page #popBtn.linked span::after{content:' ✓'}
+@media(max-width:1180px){#page #lenses{display:none}}
+@media(max-width:900px){#page .iconbtn.wide span{display:none}#page .iconbtn.wide{width:34px;justify-content:center}}
+
+/* ---- model view: one line of headline, nothing else on the plant ---- */
+#page #headline{position:fixed;top:66px;left:50%;transform:translateX(-50%);z-index:4;display:flex;align-items:baseline;gap:12px;
+  background:rgba(17,24,34,.82);border:1px solid var(--line);padding:6px 18px;border-radius:999px;max-width:78vw;white-space:nowrap}
+#page #headline b{font-size:19px;font-weight:650}
+#page #headline span{font-size:12.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis}
+
+/* ---- shared atoms (card, camera info, dashboard page) ---- */
+#page h4{margin:13px 0 6px;font-size:11.5px;font-weight:600;color:var(--dim);letter-spacing:.03em}
+#page .kpis{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#page .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:1px}
+#page .kpi b{font-size:19px;line-height:1.2}
+#page .kpi span{font-size:11px;color:var(--dim);line-height:1.3}
+#page .bar{margin-bottom:8px}
+#page [data-m],#page [data-cam]{cursor:pointer}
+#page .barTop{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:3px}
+#page .barTop bdi{color:var(--dim);white-space:nowrap}
+#page .barTrack{height:6px;background:#222d3b;border-radius:3px;overflow:hidden}
+#page .barTrack i{display:block;height:100%;border-radius:3px;transition:width .45s ease}
+#page .spark,#page .days{width:100%;display:block;direction:ltr}
+#page .spark{height:50px}#page .days{height:62px}
+/* the best/worst/average row under a 30-day chart. It used to be called .rec, which collided
+   with the camera REC dot further down (width:9px) - the later rule won and squeezed the row to
+   nine pixels, so every word wrapped onto its own line and the bottom of the dashboard read as a
+   column of single words (Jamal, 16 Nov). Two different things, two different names, and an
+   explicit width so no later rule can ever squeeze it again. */
+#page .recrow{display:flex;width:100%;min-width:0;flex-wrap:wrap;gap:3px 14px;font-size:11px;color:var(--dim);margin:5px 0 4px}
+#page .recrow span{white-space:nowrap}
+#page .strip{position:relative;display:flex;height:10px;border-radius:3px;overflow:hidden;direction:ltr;background:#222d3b}
+#page .strip i{display:block;height:100%}
+#page .strip u{position:absolute;top:0;bottom:0;width:2px;background:#fff}
+#page .mrow{margin-bottom:9px}
+#page .mrow:hover .barTop span,#page .bar[data-m]:hover .barTop span,#page .evt[data-m]:hover b,#page .evt[data-cam]:hover b{color:var(--accent)}
+#page .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:7px;flex:0 0 auto}
+#page .legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--dim);margin-top:10px}
+#page .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-inline-end:5px}
+#page .act{background:var(--panel2);border:1px solid var(--line);border-inline-start:3px solid var(--accent);border-radius:9px;padding:9px 11px;display:flex;flex-direction:column;gap:2px;margin:8px 0}
+#page .act b{font-size:13.5px}#page .act span{font-size:12px;color:var(--dim);line-height:1.45}#page .act em{font-style:normal;font-size:12px;color:var(--accent)}
+#page .evt{display:flex;gap:2px;align-items:flex-start;padding:7px 0;border-bottom:1px solid #1f2936}
+#page .evt .dot{margin-top:6px}
+#page .evt b{display:block;font-size:12.5px;font-weight:500;line-height:1.4}#page .evt span{font-size:11px;color:var(--dim)}
+#page .empty{font-size:12px;color:#7b8a9c;padding:5px 0;line-height:1.5}
+#page em.ex{font-style:normal;font-size:9.5px;color:var(--accent);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-inline-start:4px;vertical-align:middle}
+
+/* ---- machine card ---- */
+#page #card{position:fixed;inset-inline-start:16px;top:112px;width:340px;max-height:calc(100vh - 200px);overflow-y:auto;z-index:6;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px;
+  box-shadow:0 14px 40px rgba(0,0,0,.5);display:none;scrollbar-width:thin;scrollbar-color:#2a3645 transparent}
+#page #card.show{display:block}
+#page #cardHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+#page #cardTitle{font-size:15.5px;font-weight:600}
+#page #cardId{font:11px ui-monospace,Consolas,monospace;color:var(--accent);border:1px solid var(--line);padding:2px 7px;border-radius:5px}
+#page #cardClose{background:none;border:none;color:var(--dim);font-size:19px;cursor:pointer;line-height:1}
+#page #card table{width:100%;border-collapse:collapse;margin-top:9px}
+#page #card th{text-align:start;font-weight:400;color:var(--dim);font-size:12.5px;padding:3.5px 0;width:46%}
+#page #card td{text-align:end;font-size:12.5px;padding:3.5px 0}
+body.rtl #page #card td{text-align:start}
+#page #cardSrc{margin-top:11px;padding-top:9px;border-top:1px solid var(--line);font-size:10.5px;color:var(--dim);line-height:1.45}
+#page #cardExtra .cardStrip{margin-top:10px}
+#page .cardStripT{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-bottom:3px;direction:ltr}
+#page .cardWhy{margin-top:10px}
+
+/* ---- alert chips + the slim time line ---- */
+#page #alerts{position:fixed;bottom:44px;left:16px;right:16px;z-index:4;display:flex;gap:6px;justify-content:center;flex-wrap:nowrap;overflow:hidden;pointer-events:none}
+/* ALERT CHIPS, graded (Jamal, 16 Nov: "the alert colours should be clearer - they are not very
+   clear"). They were all one dim pill with a small coloured dot, so a breakdown and a routine
+   changeover looked the same from two metres. Three severities now, each with its own fill, its
+   own border and its own GLYPH - the colour is never the only carrier of the message, which is
+   also what ISA-101 asks for where colour vision cannot be relied on. */
+#page .al{pointer-events:auto;cursor:pointer;font-family:inherit;white-space:nowrap;font-size:12px;color:var(--txt);
+  background:rgba(20,28,39,.95);border:1px solid var(--line);border-radius:999px;padding:5px 12px;display:flex;align-items:center;gap:7px}
+#page .al i{font-style:normal;font-size:12px;line-height:1;flex:0 0 auto}
+#page .al i.dotI{width:9px;height:9px;border-radius:50%}
+#page .al b{font:10.5px ui-monospace,Consolas,monospace;font-weight:700;background:rgba(0,0,0,.28);padding:1px 5px;border-radius:4px}
+#page .al.sev1{background:var(--stop);border-color:#ff6b61;color:#fff;font-weight:600;box-shadow:0 2px 12px rgba(255,59,48,.35);animation:hot 1.3s infinite}
+#page .al.sev2{background:rgba(255,157,46,.17);border-color:#ff9d2e;color:#ffcf96}
+#page .al.sev2 b{background:rgba(255,157,46,.3);color:#ffdfbb}
+#page .al.sev3{border-color:#39465a}
+#page .al.ok{color:var(--run);border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.1);cursor:default}
+@keyframes hot{50%{box-shadow:0 0 0 4px rgba(255,59,48,.28)}}
+#page .al.more{color:var(--dim);cursor:default}
+#page #timebar{position:fixed;bottom:8px;left:16px;right:16px;z-index:8;display:flex;align-items:center;gap:8px;direction:ltr;height:28px;opacity:.82;transition:opacity .15s}
+#page #timebar:hover{opacity:1}
+#page #timebar .iconbtn{width:auto;min-width:30px;padding:0 7px;height:24px;font-size:11px}
+#page #clock,#page #clockEnd{font:12px ui-monospace,Consolas,monospace;color:var(--txt)}
+#page #clockEnd{color:var(--dim)}
+#page #track{position:relative;flex:1;height:6px;background:#222d3b;border-radius:3px;cursor:pointer;overflow:hidden;touch-action:none;transition:height .12s}
+#page #timebar:hover #track{height:12px}
+#page #trackFill{position:absolute;left:0;top:0;bottom:0;background:rgba(217,131,36,.55);border-right:2px solid #fff}
+#page #trackMarks i{position:absolute;top:0;bottom:0;opacity:.55}
+#page #trackMarks i.ev{width:3px;background:#fff;opacity:.95}
+#page #demoNote{font-size:10.5px;color:#6f7e90;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw;direction:rtl}
+#page #fps{font:10.5px ui-monospace,Consolas,monospace;color:#56636f;white-space:nowrap}
+#page #hintTxt{position:fixed;bottom:44px;inset-inline-start:16px;z-index:3;font-size:11px;color:#6f7e90;max-width:30vw;pointer-events:none}
+
+/* ================= THE CAMERA FEED =================
+   The picture under this is the real 3D scene from the camera's own position. Everything here
+   is the layer a camera system puts ON TOP of a picture: the recording frame, the channel and
+   the stamp, a grade (vignette + scan lines, so it reads as a feed and not as a render), and
+   the detection boxes app.js projects onto whatever is in the frame. */
+#page #pov{position:fixed;inset:0;z-index:7;display:none;pointer-events:none}
+#page #pov.show{display:block}
+#page #povGrade{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,0) 42%,rgba(0,0,0,.42) 100%),
+             repeating-linear-gradient(to bottom,rgba(255,255,255,.028) 0 1px,rgba(0,0,0,0) 1px 3px);
+  mix-blend-mode:normal}
+#page #pov > i{position:absolute;width:46px;height:46px;border:2px solid rgba(232,238,245,.75)}
+#page #pov > i:nth-child(4){top:74px;left:22px;border-right:none;border-bottom:none}
+#page #pov > i:nth-child(5){top:74px;right:22px;border-left:none;border-bottom:none}
+#page #pov > i:nth-child(6){bottom:48px;left:22px;border-right:none;border-top:none}
+#page #pov > i:nth-child(7){bottom:48px;right:22px;border-left:none;border-top:none}
+body.inwall #page #pov > i{display:none}
+#page #povTag{position:absolute;top:84px;left:36px;direction:ltr;display:flex;align-items:center;gap:10px;
+  font:12.5px ui-monospace,Consolas,monospace;letter-spacing:.06em;color:var(--txt);background:rgba(13,19,28,.72);padding:6px 12px;border-radius:6px}
+#page #povTag b{font-weight:700;color:#fff}
+#page #povTag #povWhere{color:var(--dim)}
+#page #povTag #povStamp{color:#fff;opacity:.9}
+#page .recdot{width:9px;height:9px;border-radius:50%;background:var(--stop);animation:rec 1.2s infinite;flex:0 0 auto}
+@keyframes rec{50%{opacity:.25}}
+body.inwall #page #povTag{display:none}
+#page #povBtns{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+#page #povBtns button{pointer-events:auto;cursor:pointer;font-family:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:999px;border:none}
+#page #povExit{background:var(--accent);color:#17202b}
+#page #wallBtn{background:rgba(20,28,39,.92);color:var(--txt);border:1px solid var(--line) !important}
+#page #povInfo{position:absolute;bottom:84px;inset-inline-start:36px;width:320px;background:rgba(13,19,28,.86);border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+  max-height:52vh;overflow-y:auto;pointer-events:auto;scrollbar-width:thin;scrollbar-color:#2a3645 transparent}
+#page #povInfo p{font-size:10.5px;color:#7b8a9c;line-height:1.45;margin:8px 0 0}
+#page .povK{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+#page .povK b{font-size:24px}#page .povK b.hot{color:var(--stop)}#page .povK span{font-size:11.5px;color:var(--dim);margin-inline-end:6px}
+body.inwall #page #povInfo{display:none}
+body.inpov #page #headline,body.inpov #page #alerts,body.inpov #page #hintTxt,body.inpov #page #card{display:none}
+
+/* --- detection boxes --- */
+#page #povBoxes,#page .wbox{position:absolute;inset:0;pointer-events:none;direction:ltr}
+/* a track's box. It is positioned with transform, not left/top: app.js smooths the number
+   every frame and a transform is the only one of the two the compositor can move without
+   laying the page out again. The element lives as long as the track does. */
+#page .bb{position:absolute;left:0;top:0;border:1.5px solid;border-radius:2px;will-change:transform}
+#page .bb u{position:absolute;top:-15px;left:-1.5px;font:9.5px/14px ui-monospace,Consolas,monospace;letter-spacing:.04em;
+  padding:0 4px;border-radius:2px 2px 0 0;text-decoration:none;white-space:nowrap}
+#page .bb u b{font-weight:700;opacity:.75}
+#page .bb.bok{border-color:rgba(88,166,255,.9);box-shadow:0 0 0 1px rgba(0,0,0,.35) inset}
+#page .bb.bok u{background:rgba(88,166,255,.9);color:#07121d}
+#page .bb.bwarn{border-color:#ff9d2e}
+#page .bb.bwarn u{background:#ff9d2e;color:#1b1206}
+#page .bb.bhi{border-color:var(--stop);box-shadow:0 0 12px rgba(255,59,48,.45)}
+#page .bb.bhi u{background:var(--stop);color:#fff;font-weight:700}
+
+/* --- the 2x2 wall. Only the labels live here; the pictures are four scissored viewports. --- */
+/* direction:ltr is NOT cosmetic here. The body is RTL in Arabic, and an RTL grid fills its
+   columns right to left - so pane 0's label landed top-RIGHT while the GL viewport drew pane 0
+   top-LEFT, and every label and every detection box sat over the wrong picture. The pane order
+   has to match the viewport order, and the viewport order is fixed by GL. */
+#page #wallGrid{position:absolute;inset:0;display:none;direction:ltr;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+body.inwall #page #wallGrid{display:grid}
+#page .wpane{position:relative;border:1px solid rgba(13,19,28,.9);overflow:hidden}
+#page .wtag{position:absolute;top:8px;inset-inline-start:10px;display:flex;align-items:center;gap:7px;direction:ltr;
+  font:11px ui-monospace,Consolas,monospace;color:#fff;background:rgba(13,19,28,.7);padding:3px 8px;border-radius:4px}
+#page .wwhere{position:absolute;bottom:8px;inset-inline-start:10px;font-size:10.5px;color:var(--dim);background:rgba(13,19,28,.7);padding:2px 8px;border-radius:4px}
+
+/* ---- the dashboard view: a full page, four parts per lens ---- */
+#page #page{position:fixed;inset:56px 0 40px 0;z-index:5;overflow-y:auto;display:none;background:var(--bg);padding:14px 22px 18px;
+  scrollbar-width:thin;scrollbar-color:#2a3645 transparent}
+body.view-dash #page #page{display:block}
+body.view-dash #page #stage,body.view-dash #page #headline,body.view-dash #page #alerts,body.view-dash #page #card,body.view-dash #page #hintTxt,body.view-dash #page #fps{display:none}
+#page .pgHead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:14px}
+#page .pgLens{font-size:13px;color:var(--dim);display:flex;align-items:center;gap:9px}
+#page .pgLens em{font:10.5px ui-monospace,Consolas,monospace;font-style:normal;color:var(--accent);border:1px solid var(--line);padding:1px 7px;border-radius:5px}
+#page .pgBig{font-size:46px;font-weight:650;line-height:1.1;letter-spacing:-.01em}
+#page .pgSub{font-size:13px;color:var(--dim)}
+#page .sqdc{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:9px;flex:1;max-width:820px;position:relative}
+/* SQDC is a DAY board. On a period page it says so, so it is never read as the period. */
+#page .sqdc.dayonly{padding-top:15px}
+#page .sqdc.dayonly::before{content:attr(data-day);position:absolute;top:0;inset-inline-start:2px;
+  font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#6f7e90}
+#page .sq{display:flex;gap:11px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:9px 12px;border-top:3px solid #44505f}
+#page .sq.ok{border-top-color:var(--run)}#page .sq.bad{border-top-color:var(--stop)}
+#page .sq > i{font-style:normal;font-size:26px;font-weight:700;color:#44505f;width:22px;text-align:center}
+#page .sq.ok > i{color:var(--run)}#page .sq.bad > i{color:var(--stop)}
+#page .sq span{display:block;font-size:11px;color:var(--dim)}#page .sq b{display:block;font-size:19px;line-height:1.25}#page .sq em{font-style:normal;font-size:10.5px;color:#7b8a9c}
+#page .pgGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
+
+/* ================= THE DASHBOARD, council of 25 Nov 2026 =================
+   Direction C, kept honest: a neutral grey structure, colour ONLY where it carries meaning
+   (a machine state, a direction, a lock), orange only on things that can be pressed. Motion is
+   CSS and means something: bars grow from zero when a page opens, the trend lines draw in. */
+#page .pgQ{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:2px 0 14px}
+#page .pgQuestion{margin:6px 0 4px;font-size:25px;line-height:1.25;font-weight:650;letter-spacing:-.01em;max-width:1050px}
+#page .pgAnswer{margin:0;font-size:14.5px;line-height:1.55;color:#c9d4e0;max-width:1050px}
+#page .pgLens em.mtag{color:#8cc4ff;border-color:#2d4f74}
+#page .ktRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px;margin:4px 0 14px}
+#page .kt{position:relative;text-align:start;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:11px 13px 9px;color:var(--txt);font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0;
+  overflow:hidden;transition:border-color .2s,transform .2s}
+#page .kt:hover{border-color:var(--accent);transform:translateY(-1px)}
+#page .ktL{font-size:11.5px;color:var(--dim);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#page .ktV{font-size:26px;line-height:1.15;font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+#page .ktS{font-size:11px;color:var(--dim)}
+#page .ktD{font-style:normal;font-size:11px}
+#page .ktD.up{color:#3fb950}#page .ktD.dn{color:#ff7b72}#page .ktD.fl{color:var(--dim)}
+#page .ktWhy{font-style:normal;font-size:10.5px;color:var(--accent);opacity:.75;margin-top:3px}
+#page .kt:hover .ktWhy{opacity:1}
+#page .ktTag{font-style:normal;font-size:9.5px;padding:0 5px;border-radius:4px;border:1px solid var(--line)}
+#page .ktTag.ex{color:#d9c23a}#page .ktTag.sc{color:#8cc4ff}#page .ktTag.tb{color:#ff7b72;border-color:#7a2b25}
+#page .kt.lk{background:repeating-linear-gradient(135deg,var(--panel),var(--panel) 8px,#161f2b 8px,#161f2b 16px);border-style:dashed}
+#page .kt.lk .ktV{font-size:20px;opacity:.8}
+#page .ktOpen{font-style:normal;font-size:11px;color:var(--dim)}#page .ktOpen u{text-decoration:none;color:#8cc4ff}
+#page .spk{width:100%;height:26px;margin-top:4px;display:block}
+#page .spk.big{height:44px}
+#page .spkA{fill:rgba(147,162,180,.10);stroke:none}
+#page .spkL{fill:none;stroke:#93a2b4;stroke-width:1.4}
+#page .fresh .spkL{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s ease-out forwards}
+#page .spk circle{fill:var(--txt)}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes grow{from{width:0}}
+#page .heroPan{margin-bottom:12px}
+#page .hero{min-width:0}
+#page .gLeg{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--dim);margin-bottom:8px}
+#page .gLeg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px;vertical-align:-1px}
+#page .gAxis{position:relative;height:16px;margin-inline-start:170px;margin-inline-end:52px;font-size:10px;color:#6f7e90}
+#page .gAxis span{position:absolute;transform:translateX(-50%)}
+#page .grow{display:grid;grid-template-columns:160px 1fr minmax(136px,auto);align-items:center;gap:10px;padding:3px 0;cursor:pointer}
+#page .grow:hover .gName{color:var(--accent)}
+#page .gName{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page .gBar .strip{height:15px;border-radius:4px}
+#page .gPct{font-size:12.5px;color:var(--txt);text-align:end;font-variant-numeric:tabular-nums;font-weight:600}
+#page .gPct em,#page .bVal em{display:block;font-style:normal;font-size:10.5px;font-weight:400;color:var(--dim)}
+#page .gPct.ok{color:var(--run)}#page .gPct.near{color:#e3b341}#page .gPct.low{color:#ff7b72}
+#page .hBar{display:flex;height:34px;border-radius:9px;overflow:hidden;background:var(--panel2)}
+#page .hSeg{display:block;width:var(--w);transition:width .45s ease}
+#page .fresh .hSeg{animation:grow .9s ease-out both}
+#page .hList{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:4px 22px;margin-top:11px}
+#page .hRow{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;font-size:12.5px;padding:3px 0}
+#page .hRow i{width:10px;height:10px;border-radius:3px}
+#page .hRow bdi{color:var(--dim);font-variant-numeric:tabular-nums}
+#page .hTrend{margin-top:12px;font-size:11px;color:var(--dim)}
+#page .bRow{display:grid;grid-template-columns:170px 1fr minmax(200px,auto);gap:10px;align-items:center;padding:4px 0;cursor:pointer}
+#page .bRow:hover .bName{color:var(--accent)}
+#page .bName{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page .bTrack{height:12px;background:var(--panel2);border-radius:6px;overflow:hidden}
+#page .bTrack i{display:block;height:100%;width:var(--w);border-radius:6px;transition:width .45s ease}
+#page .fresh .bTrack i{animation:grow .9s ease-out both}
+#page .bVal{font-size:11.5px;color:var(--dim);text-align:end;font-variant-numeric:tabular-nums}
+#page .bFoot{font-size:10.5px;color:#6f7e90;margin-top:10px;line-height:1.5}
+#page .vTxt{font-size:12px;color:#c9d4e0}
+#page .vc{font:11px ui-monospace,Consolas,monospace;padding:1px 6px;border-radius:5px;background:var(--panel2)}
+#page .vc.hi{color:#ff7b72}#page .vc.md{color:#e3c341}#page .vc.lo{color:var(--dim)}
+#page .eTop{font-size:11.5px;color:var(--dim);margin-bottom:6px}
+#page .eCurve{width:100%;height:90px;display:block;margin-bottom:12px}
+#page .eAll{fill:none;stroke:#3b4a5c;stroke-width:1.2}
+#page .eSoFar{fill:rgba(217,131,36,.16);stroke:#d98324;stroke-width:1.6}
+#page .fresh .eSoFar{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.2s ease-out forwards}
+#page .eNow{stroke:var(--txt);stroke-width:1;stroke-dasharray:3 3;opacity:.7}
+#page .eTable{display:grid;gap:2px}
+#page .eHead,#page .eRow{display:grid;grid-template-columns:170px minmax(160px,2fr) repeat(4,minmax(78px,1fr));gap:10px;align-items:center}
+#page .eHead{font-size:10.5px;color:#6f7e90;text-transform:uppercase;letter-spacing:.05em;padding-bottom:5px;border-bottom:1px solid var(--line)}
+#page .eRow{font-size:12px;padding:4px 0;cursor:pointer;font-variant-numeric:tabular-nums}
+#page .eRow:hover .bName{color:var(--accent)}
+#page .eRow > bdi{text-align:end}
+#page .eHead > span:not(:first-child){text-align:end}
+#page .eK{display:grid;grid-template-columns:1fr 46px;gap:8px;align-items:center}
+#page .eK i{display:block;height:11px;width:var(--w);background:#58a6ff;border-radius:5px;position:relative;overflow:hidden;transition:width .45s ease}
+#page .fresh .eK i{animation:grow .9s ease-out both}
+#page .eK u{position:absolute;inset-inline-end:0;top:0;bottom:0;width:var(--w);background:#2c4f7a}
+#page .eK bdi{text-align:end}
+#page .eIdle{color:#ffb86b}
+#page .evLine{position:relative;height:30px;margin:2px 52px 12px 170px;border-bottom:1px solid var(--line)}
+#page .evDot{position:absolute;bottom:6px;width:12px;height:12px;border-radius:50%;background:#e3c341;transform:translateX(-50%);cursor:pointer}
+#page .evDot.hi{background:#ff3b30}
+#page .evLine u{position:absolute;top:0;bottom:0;width:1px;background:var(--txt);opacity:.6}
+#page .pgGrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+#page .sq.lk{opacity:.75}#page .sq.lk b{font-size:16px}
+/* ---- THE ADVISOR (model C). A presence, not a widget. Every bit of motion means something:
+   breathing = watching, the ring turning = thinking, mouth and bars = speaking, a pulse ring =
+   it has something new for this desk. The panel is a real conversation: a thread, suggested
+   questions, and a free text box - Jamal, 25 Nov: "I want something wider, an open chat". ---- */
+#page #advisor{position:fixed;bottom:52px;inset-inline-start:18px;z-index:40;display:flex;flex-direction:column;align-items:flex-start;gap:10px;pointer-events:none}
+#page #advisor>*{pointer-events:auto}
+#page .advFace{position:relative;width:88px;height:76px;padding:0;border:none;background:none;cursor:pointer;animation:advBreath 4.2s ease-in-out infinite;filter:drop-shadow(0 10px 22px rgba(0,0,0,.55))}
+#page .advFace svg{width:88px;height:76px;display:block;overflow:visible}
+#page .avGlow{fill:rgba(217,131,36,.10)}
+#page .avRing{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:7 5;transform-origin:37px 37px;opacity:.9}
+#page .avDisc{stroke:#3a4c61;stroke-width:1}
+#page .avTicks rect{fill:var(--accent);opacity:.5;transform-origin:37px 37px}
+#page .avEyes ellipse{fill:#1b2430;transform-origin:37px 28.6px;animation:advBlink 5.6s infinite}
+#page .avBrow{fill:none;stroke:#3a4859;stroke-width:1.2;stroke-linecap:round}
+#page .avMouth{fill:#8b5a4a;transform-origin:37px 34.3px;transform-box:view-box}
+#page .avHair2{opacity:.55}
+#page .avWave rect{fill:var(--accent);opacity:0;transform-origin:center;transform-box:fill-box}
+#page .advDot{position:absolute;top:6px;left:58px;width:11px;height:11px;border-radius:50%;background:#3fb950;border:2px solid var(--bg)}
+#page .advLock{position:absolute;bottom:6px;left:56px;font-style:normal;font-size:15px}
+#page #advisor.locked .advFace{filter:grayscale(1) drop-shadow(0 10px 22px rgba(0,0,0,.55));opacity:.72;animation:none}
+#page #advisor.locked .avRing,#page #advisor.locked .avTicks rect{stroke:#5d6f84;fill:#5d6f84}
+#page #advisor.think .avRing{animation:advSpin 1.1s linear infinite}
+#page #advisor.think .avTicks rect{animation:advSpin 2.2s linear infinite reverse}
+#page #advisor.talk .avWave rect{opacity:1;animation:advTalk .42s ease-in-out infinite alternate}
+#page #advisor.talk .avWave rect:nth-child(2){animation-delay:.1s}#page #advisor.talk .avWave rect:nth-child(3){animation-delay:.2s}
+#page #advisor.talk .avMouth{animation:advMouth .26s ease-in-out infinite alternate}
+#page #advisor.talk .avRing{stroke-dasharray:none;animation:advPulse 1s ease-in-out infinite}
+#page #advisor.nudge .advFace::after{content:"";position:absolute;inset:4px 12px;border-radius:50%;border:2px solid var(--accent);animation:advNudge 1.6s ease-out infinite}
+#page .advPanel{display:none;width:400px;max-width:88vw;max-height:70vh;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 50px rgba(0,0,0,.6);overflow:hidden;animation:advIn .22s ease-out}
+#page #advisor.open .advPanel{display:flex}
+#page .advHead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
+#page .advHead>div{flex:1;min-width:0}#page .advHead b{display:block;font-size:14px;color:var(--txt)}#page .advHead span{display:block;font-size:11.5px;color:var(--dim)}
+#page .advVoice,#page .advX{background:none;border:1px solid var(--line);border-radius:8px;color:var(--dim);cursor:pointer;font-size:15px;width:32px;height:30px;flex:none}
+#page .advVoice.on{border-color:var(--accent);color:var(--accent)}#page .advX{border:none;font-size:20px}
+#page .advThread{flex:1;min-height:90px;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+#page .advMsg{font-size:13px;line-height:1.6;padding:9px 11px;border-radius:11px;max-width:93%}
+#page .advMsg.bot{background:var(--panel2);border:1px solid var(--line);color:var(--txt);align-self:flex-start}
+#page .advMsg.me{background:rgba(217,131,36,.16);border:1px solid rgba(217,131,36,.45);color:var(--txt);align-self:flex-end}
+#page .advMsg.new{animation:advIn .3s ease-out}
+#page .advMsg small{display:block;margin-top:7px;padding-top:6px;border-top:1px dashed var(--line);color:var(--dim);font-size:11px;line-height:1.5}
+#page .advMsg small b{color:var(--dim);font-weight:650}
+#page .advGos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#page .advGo{background:none;border:1px solid var(--line);color:var(--dim);border-radius:8px;padding:4px 9px;font:inherit;font-size:11.5px;cursor:pointer}
+#page .advGo:hover{border-color:var(--accent);color:var(--accent)}
+#page .advDots i{display:inline-block;width:5px;height:5px;margin:0 1.5px;border-radius:50%;background:var(--dim);animation:advDot 1s infinite}
+#page .advDots i:nth-child(2){animation-delay:.15s}#page .advDots i:nth-child(3){animation-delay:.3s}
+#page .advVoiceRow{padding:0 14px 2px}
+#page #advVoiceSel{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:11.5px}
+#page .advAsk{padding:6px 14px 0;font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+#page .advChips{display:flex;flex-wrap:wrap;gap:6px;padding:7px 14px 10px}
+#page .advChips button{background:none;border:1px solid var(--accent);color:var(--accent);border-radius:16px;padding:5px 11px;font:inherit;font-size:11.5px;cursor:pointer;text-align:start}
+#page .advChips button:hover:not(:disabled){background:var(--accent);color:#17202b}
+#page .advChips button:disabled{border-color:var(--line);color:var(--dim);cursor:default}
+#page .advForm{display:flex;gap:7px;padding:10px 14px 13px;border-top:1px solid var(--line);background:var(--panel2)}
+#page #advIn{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:8px 11px;font:inherit;font-size:12.5px}
+#page #advIn:focus{outline:none;border-color:var(--accent)}
+#page #advSend{flex:none;width:36px;border:none;border-radius:9px;background:var(--accent);color:#17202b;font-size:14px;cursor:pointer}
+#page #advMic{flex:none;width:36px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--dim);font-size:14px;cursor:pointer}
+#page #advisor.hear #advMic{border-color:var(--accent);color:var(--accent);animation:advPulse .9s ease-in-out infinite}
+body.rtl #page #advSend{transform:scaleX(-1)}
+#page .advUnlock{margin:0 14px 14px;padding:9px;border-radius:9px;border:none;background:var(--accent);color:#17202b;font:inherit;font-weight:650;cursor:pointer}
+#page .advNote{padding:0 14px 8px;font-size:11px;color:var(--dim);line-height:1.5}#page .advNote:empty{display:none}
+/* the arrow the advisor parks beside the figure it just used */
+#page #advArrow{position:fixed;z-index:45;pointer-events:none;opacity:0;transform:scale(.8);transition:opacity .2s,transform .2s;
+  width:42px;height:34px;display:grid;place-items:center;font-size:24px;color:var(--accent);filter:drop-shadow(0 3px 8px rgba(0,0,0,.6))}
+#page #advArrow.show{opacity:1;transform:none;animation:advPoint 1.1s ease-in-out infinite}
+#page .kt.pointed,#page .eRow.pointed{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px;animation:advRing 1.2s ease-in-out infinite}
+@keyframes advBreath{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes advBlink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes advSpin{to{transform:rotate(360deg)}}
+@keyframes advPulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes advTalk{from{transform:scaleY(.4)}to{transform:scaleY(1.7)}}
+@keyframes advMouth{from{transform:scaleY(1)}to{transform:scaleY(3.2)}}
+@keyframes advNudge{from{transform:scale(.9);opacity:1}to{transform:scale(1.3);opacity:0}}
+@keyframes advIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes advDot{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes advPoint{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes advRing{0%,100%{outline-color:var(--accent)}50%{outline-color:rgba(217,131,36,.3)}}
+@media (prefers-reduced-motion:reduce){#page .advFace,#page #advisor .avRing,#page .avEyes ellipse,#page #advisor.talk .avWave rect,#page #advisor.talk .avMouth,#page .advMsg.new,#page #advArrow.show,#page .kt.pointed{animation:none!important}}
+#page #prov{position:fixed;top:56px;bottom:40px;inset-inline-end:0;width:420px;max-width:92vw;z-index:30;background:var(--panel);
+  border-inline-start:1px solid var(--line);box-shadow:-24px 0 48px rgba(0,0,0,.4);padding:18px 20px;overflow-y:auto;
+  transform:translateX(105%);transition:transform .28s ease}
+body.rtl #page #prov{transform:translateX(-105%)}
+#page #prov.show{transform:none}
+#page #provClose{position:absolute;top:10px;inset-inline-end:12px;background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer}
+#page .pvHead span{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+#page .pvHead h3{margin:4px 0 2px;font-size:19px}
+#page .pvVal{font-size:30px;font-weight:650;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+#page #prov h4{margin:16px 0 6px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+#page .pvF{margin:0;font-size:13px;line-height:1.6;color:#c9d4e0}
+#page .pvChips{display:flex;flex-wrap:wrap;gap:6px}
+#page .pvChip{font-size:11.5px;padding:3px 8px;border-radius:7px;border:1px solid var(--line)}
+#page .pvChip.ok{color:#3fb950;border-color:#23472f}#page .pvChip.no{color:var(--dim);border-style:dashed}
+#page .pvRow{display:grid;grid-template-columns:140px 1fr 90px;gap:8px;align-items:center;font-size:12px;padding:3px 0;cursor:pointer}
+#page .pvRow i{display:block;height:8px;width:var(--w);background:var(--accent);border-radius:4px;opacity:.8;transition:width .45s ease}
+#page .fresh .pvRow i{animation:grow .7s ease-out both}
+#page .pvRow bdi{text-align:end;color:var(--dim);font-variant-numeric:tabular-nums}
+#page .pvNote{font-size:11px;color:#6f7e90;line-height:1.55;margin-top:14px}
+#page .pvOpen{font-size:13px;margin-top:12px}#page .pvOpen b{color:#8cc4ff}
+@media(max-width:1100px){#page .pgGrid2{grid-template-columns:1fr}#page .eHead,#page .eRow{grid-template-columns:120px 1fr repeat(4,64px)}}
+@media (prefers-reduced-motion:reduce){#page .hSeg,#page .bTrack i,#page .eK i,#page .pvRow i{animation:none;transition:none}#page .spkL,#page .eSoFar{animation:none;stroke-dashoffset:0}}
+@media(max-width:1250px){#page .pgGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){#page .pgGrid,#page .sqdc{grid-template-columns:1fr}}
+#page .pan{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px 14px;min-width:0}
+#page .pan h3{margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--accent);text-transform:uppercase;display:flex;align-items:center;gap:8px}
+#page .pan h3::after{content:'';flex:1;height:1px;background:var(--line)}
+#page .pan.act h3{color:var(--txt)}
+#page .pgNote{font-size:11px;color:#7b8a9c;line-height:1.5;margin-top:12px;max-width:1000px}
+#page .opState{border-radius:12px;padding:22px 16px;text-align:center;color:#0d131c}
+#page .opState b{display:block;font-size:26px}#page .opState span{font-size:14px;font-weight:600}
+#page .opBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#page .opBtn{background:var(--panel2);border:2px solid var(--line);color:var(--txt);font:inherit;font-size:13px;font-weight:600;border-radius:11px;padding:16px 8px;cursor:default}
+#page .opBtn.on{background:#fff;color:#17202b}
+
+/* ================= THE ADVISOR =================
+   One card per piece of advice, and the card has a fixed shape on purpose: the action in the
+   imperative at the top, then WHY · WORTH · OWNER in three labelled rows. The shape is the
+   discipline - advice that cannot fill all four rows is advice we should not be giving. */
+#page .advWrap{display:flex;flex-direction:column;gap:9px}
+#page .adv{background:var(--panel2);border:1px solid var(--line);border-inline-start:3px solid var(--accent);border-radius:10px;padding:10px 12px;cursor:pointer}
+#page .adv:hover{border-color:#3b4a5c;border-inline-start-color:var(--accent)}
+#page .adv.md{border-inline-start-color:#ff9d2e}
+#page .adv.hi{border-inline-start-color:var(--stop);background:rgba(255,59,48,.07)}
+#page .advTop{display:flex;align-items:flex-start;gap:9px;margin-bottom:7px}
+#page .advTop i{font-style:normal;font:11px/18px ui-monospace,Consolas,monospace;font-weight:700;color:#17202b;background:var(--accent);
+  width:18px;height:18px;border-radius:5px;text-align:center;flex:0 0 auto}
+#page .adv.hi .advTop i{background:var(--stop);color:#fff}
+#page .adv.md .advTop i{background:#ff9d2e}
+#page .advTop b{font-size:13.5px;font-weight:600;line-height:1.4}
+#page .advRow{display:flex;gap:9px;align-items:baseline;padding:2px 0 2px 27px}
+body.rtl #page .advRow{padding:2px 27px 2px 0}
+#page .advRow > span{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6f7e90;flex:0 0 46px}
+#page .advRow p{margin:0;font-size:12px;color:var(--dim);line-height:1.5}
+#page .advRow em{font-style:normal;color:var(--accent)}
+
+/* ================= A STANDING VIOLATION =================
+   Not an event. It stays until something is moved, so it gets a code, the rule it breaks and
+   the fix - and a shape that is unmistakably not a bar chart. */
+#page .viol{background:rgba(255,157,46,.08);border:1px solid #6b4a1f;border-inline-start:3px solid #ff9d2e;border-radius:10px;
+  padding:9px 11px;margin-bottom:8px;cursor:pointer;display:flex;flex-direction:column;gap:3px}
+#page .viol:hover{background:rgba(255,157,46,.14)}
+#page .viol.hi{background:rgba(255,59,48,.09);border-color:#7a2b25;border-inline-start-color:var(--stop)}
+#page .viol.hi:hover{background:rgba(255,59,48,.15)}
+#page .viol b{font-size:12.5px;font-weight:600;line-height:1.4;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+#page .viol span{font-size:11px;color:var(--dim);line-height:1.45}
+#page .vcode{font:10px ui-monospace,Consolas,monospace;font-weight:700;color:#17202b;background:#ff9d2e;padding:1px 6px;border-radius:4px;flex:0 0 auto}
+#page .viol.hi .vcode{background:var(--stop);color:#fff}
+
+/* ================= PERIOD RESULTS =================
+   A figure for the selected period, and next to it the move against the SAME period before it:
+   the arrow is coloured by whether the move is GOOD, not by whether it is up - a loss going up
+   is not green. */
+#page .pks{display:flex;flex-direction:column;gap:7px;margin-bottom:4px}
+#page .pk{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px}
+#page .pk > span{display:block;font-size:11px;color:var(--dim);margin-bottom:1px}
+#page .pk > b{display:block;font-size:24px;line-height:1.15;font-weight:650}
+#page .pk.proj{border-style:dashed;opacity:.9}
+#page .pkd{display:flex;gap:9px;flex-wrap:wrap;margin-top:3px}
+#page .dl{font-style:normal;font-size:11px;font-weight:600}
+#page .dl.up{color:var(--run)}#page .dl.down{color:var(--stop)}#page .dl.flat{color:#7b8a9c;font-weight:400}
+#page .pgRangeTag{font-size:10.5px;letter-spacing:.04em;color:#7b8a9c;margin-bottom:9px}
+#page .pgLens em.rtag{color:var(--txt);border-color:#3b4a5c}
+#page .tbc{background:rgba(255,59,48,.08);border:1px solid #7a2b25;border-radius:9px;padding:9px 11px;margin-bottom:9px}
+/* a lens that this model does not include. Not an error state and not styled like one: it is
+   the next model's pitch, so it reads as an offer with the figure it opens written in it. */
+#page .lockPan{background:linear-gradient(180deg,rgba(88,166,255,.09),rgba(88,166,255,.03));
+  border:1px solid #2d4f74;border-radius:11px;padding:14px 16px;margin-bottom:10px}
+#page .lockPan h5{margin:0 0 4px;font-size:12px;color:var(--dim);font-weight:500;letter-spacing:.3px;text-transform:uppercase}
+#page .lockPan .lkName{font-size:17px;font-weight:600;margin-bottom:9px}
+#page .lockPan .lkRow{display:flex;gap:9px;align-items:flex-start;margin-top:8px;font-size:12.5px;line-height:1.55}
+#page .lockPan .lkRow em{font-style:normal;color:var(--dim);flex:0 0 92px;font-size:11px;padding-top:2px}
+#page .lockPan .lkRow span{flex:1}
+#page .lockPan .lkOpen{margin-top:11px;padding-top:10px;border-top:1px solid #2d4f74;font-size:13px;line-height:1.55}
+#page .lockPan .lkOpen b{color:#8cc4ff}
+#page .pkPart{background:rgba(255,200,90,.07);border:1px solid #6b5520;border-radius:9px;padding:9px 11px;
+  margin-bottom:10px;font-size:12px;line-height:1.55}
+#page .pkPart b{color:#ffd27a}
+#page .pkTag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:5px;margin-inline-start:7px;
+  background:rgba(88,166,255,.14);color:#8cc4ff;vertical-align:2px}
+#page .tbc b{font:11px ui-monospace,Consolas,monospace;font-weight:700;color:var(--stop);letter-spacing:.08em;display:block;margin-bottom:3px}
+#page .tbc span{font-size:11.5px;color:var(--dim);line-height:1.5}
+
+/* ================= THE LIVE BOARD =================
+   The way into the cameras. It was: find a 60 cm pole in a 120 x 80 m plot and click it, which
+   Jamal found by accident (16 Nov). A drawer on the side of the screen: what is happening, worst
+   and newest first, each line naming the channel that saw it, then every channel grouped under
+   it. One press goes to the camera WITH the event already framed. */
+#page #feedBtn{position:relative}
+#page #feedBtn i.badge{position:absolute;top:-5px;inset-inline-end:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
+  background:var(--stop);color:#fff;font:700 10px/16px ui-monospace,Consolas,monospace;font-style:normal;text-align:center}
+#page #feedBtn.on i.badge{background:#17202b;color:var(--accent)}
+#page #feed{position:fixed;top:56px;inset-inline-end:0;bottom:40px;width:340px;max-width:92vw;z-index:10;display:none;
+  background:var(--panel);border-inline-start:1px solid var(--line);box-shadow:-18px 0 44px rgba(0,0,0,.45);
+  overflow-y:auto;padding:4px 14px 18px;scrollbar-width:thin;scrollbar-color:#2a3645 transparent}
+body.feedopen #page #feed{display:block}
+#page .fdH{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:#6f7e90;
+  margin:15px 0 7px;position:sticky;top:0;background:var(--panel);padding:7px 0 4px;z-index:1}
+/* what the alert engine deliberately did NOT push. A threshold the reader cannot see reads as a
+   system that missed something, so it is said out loud and styled as quiet rather than as an
+   alert of its own. */
+#page .fdQuiet{font-size:10.5px;color:#64717f;line-height:1.5;margin:10px 0 2px;padding:7px 9px;
+  border:1px dashed var(--line);border-radius:8px}
+#page .fdSplit{margin:19px 0 2px;border-top:1px solid var(--line);padding-top:10px;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:#53606e}
+#page .fdH::before{content:'';order:3;flex:1;height:1px;background:var(--line)}
+#page .fdH i{order:4;font-style:normal;font:10px ui-monospace,Consolas,monospace;color:var(--dim)}
+#page .fd{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;width:100%;text-align:start;cursor:pointer;font-family:inherit;
+  background:var(--panel2);border:1px solid var(--line);border-inline-start:3px solid #44505f;border-radius:9px;padding:8px 10px;margin-bottom:6px;color:var(--txt)}
+#page .fd:hover{border-color:#3b4a5c;background:#1f2a38}
+#page .fd.hot{border-inline-start-color:var(--stop);background:rgba(255,59,48,.09)}
+#page .fd.hot:hover{background:rgba(255,59,48,.15)}
+#page .fd em{grid-row:1/3;align-self:start;font:10px/16px ui-monospace,Consolas,monospace;font-style:normal;font-weight:700;
+  color:#17202b;background:#ff9d2e;padding:0 6px;border-radius:4px;margin-top:2px}
+#page .fd.hot em{background:var(--stop);color:#fff}
+/* a violation that was cleared. Green, quiet, and still one press from the camera that saw it */
+#page .fd.done{border-inline-start-color:var(--run);background:rgba(63,185,80,.07)}
+#page .fd.done:hover{background:rgba(63,185,80,.13)}
+#page .fd.done em{background:var(--run);color:#07121d}
+#page .fd.done .fdT{color:var(--dim)}
+#page .fdT{font-size:12.5px;font-weight:500;line-height:1.4}
+#page .fdS{font-size:10.5px;color:var(--dim);line-height:1.4}
+#page .fdCams{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#page .fdc{display:flex;flex-direction:column;gap:1px;text-align:start;cursor:pointer;font-family:inherit;min-width:0;
+  background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--txt)}
+#page .fdc:hover{border-color:var(--accent)}
+#page .fdc b{font:11px ui-monospace,Consolas,monospace;font-weight:700;color:var(--accent)}
+#page .fdc span{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page .fdc.off{opacity:.55;border-style:dashed}
+#page .fdc.off b{color:var(--stop)}
+#page #feedFoot{display:flex;gap:7px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+#page #feedFoot button{flex:1;cursor:pointer;font-family:inherit;font-size:12px;padding:8px;border-radius:8px;
+  background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
+#page #feedFoot button:hover{border-color:var(--accent);color:var(--accent)}
+body.inpov #page #feed{display:none}
+
+#page #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);z-index:20;color:var(--dim);font-size:13px;letter-spacing:.1em}
 </style>
 </head>
 <body class="sc-laptop">
@@ -515,7 +1152,13 @@ h3.sec{font-size:var(--fs-micro);color:var(--dim);letter-spacing:.1em;text-trans
   </header>
   <nav class="rail" id="rail"></nav>
   <div class="now" id="now"></div>
-  <main><div class="tiles" id="tiles"></div></main>
+  <div class="deskbar" id="deskbar"></div>
+  <!-- THE DESK DASHBOARD. On a mouse screen a lens is not three figures: it is the page dash.js
+       builds for the model - the question, its answer, the figures, the hero chart, the advisor
+       and the 30-day record. dash.js paints into #pgBody, so the container is its shape, not
+       ours, and the phone never shows it. -->
+  <main><div class="tiles" id="tiles"></div>
+        <div id="page" hidden><div id="pgBody"></div></div></main>
   <footer id="note"></footer>
   <nav class="nav">
     <button data-nav="home" aria-current="page" data-s="app.home"></button>
@@ -725,6 +1368,426 @@ window.TELMERA.i18n = (function () {
   return window.TEL.s;
 })();
 window.TELMERA.tel = window.TEL;
+
+/* site_data.js - everything OUTSIDE the hall.
+ *
+ * layout.json owns the inside of the building and is not touched here.
+ * Plan coordinates, metres, same frame as layout.json:
+ *   origin = the hall's south-west internal corner, x east, y north.
+ *   The hall therefore occupies x 0..72, y 0..36.
+ * Negative y is in front of the building (the street side).
+ *
+ * Edit the numbers here; nothing else needs to change.
+ */
+window.TELMERA = window.TELMERA || {};
+window.TELMERA.site = {
+  meta: {
+    /* The demo plant's own name. Invented and neutral on purpose - never a real
+       customer's plant. Renamed 15 Nov 2026; the previous name is retired. */
+    factory: 'Rakiza Electrical Industries',
+    factory_ar: 'ركيزة للصناعات الكهربائية',
+    note: 'VIRTUAL DEMO FACTORY - invented layout, example figures. Not a real customer and not a real plant.',
+    name_clearance: 'TBC'
+  },
+
+  plot: { x0: -24, y0: -22, x1: 96, y1: 58 },   /* 120 x 80 m = 9,600 m2 */
+  setbacks: { front: 22, west: 24, east: 24, rear: 22 },
+  fence: { height: 2.4, postEvery: 3.0 },
+
+  gates: [
+    { id: 'G1', side: 'S', at: 18, width: 10, kind: 'vehicle',
+      name: 'Main gate', name_ar: 'البوابة الرئيسية', barrier: true },
+    /* beside the guard post, not in the middle of the visitor bays - see `walkways` below */
+    { id: 'G2', side: 'S', at: 32, width: 3.5, kind: 'personnel',
+      name: 'Personnel gate', name_ar: 'بوابة الأفراد', turnstile: true },
+    { id: 'G3', side: 'N', at: 34, width: 9, kind: 'vehicle',
+      name: 'Dispatch gate', name_ar: 'بوابة الشحن', barrier: true }
+  ],
+
+  /* ================= GUARD ROOMS =================
+     17 Nov 2026 (Jamal): "I want a security room at the plant's exit as well, because there is
+     none at the exit or at the loading area."
+     He is right, and it is the gap a security man notices first: the plot had ONE guard room, on
+     the main gate at the front, and the DISPATCH gate - the one every finished panel and every
+     lorry leaves through - was an unmanned opening in the fence. A plant watches what goes out
+     harder than what comes in; that is where the stock walks.
+     So there are two now, and the second one brought its own road with it: G3 sits on the north
+     fence at x 29.5..38.5 and the north road stops at y 47, so the lorries were crossing eleven
+     metres of bare yard to reach a gate with nobody on it. R-DISPATCH joins the two. */
+  guardPosts: [
+    { id: 'GH-1', x: 26, y: -19, w: 4.5, h: 3.5, z: 3.0, gate: 'G1',
+      name: 'Guard room, main gate', name_ar: 'غرفة الحراسة — البوابة الرئيسية' },
+    { id: 'GH-2', x: 24, y: 53.5, w: 4.5, h: 3.5, z: 3.0, gate: 'G3', barrier: true,
+      name: 'Guard room, dispatch gate', name_ar: 'غرفة الحراسة — بوابة الشحن' }
+  ],
+
+  roads: [
+    { id: 'R-ENTRY', x: 14,  y: -22, w: 9,   h: 16 },
+    { id: 'R-SOUTH', x: -16, y: -8,  w: 104, h: 7  },
+    { id: 'R-WEST',  x: -16, y: -8,  w: 7,   h: 62 },
+    { id: 'R-NORTH', x: -16, y: 40,  w: 104, h: 7  },
+    { id: 'R-EAST',  x: 81,  y: -8,  w: 7,   h: 55 },
+    /* added 17 Nov 2026 with the second guard room: the lorry route from the north road up to
+       the dispatch gate G3 (x 29.5..38.5 on the north fence). Without it the gate stood at the
+       end of eleven metres of nothing. */
+    { id: 'R-DISPATCH', x: 29.5, y: 47, w: 9, h: 11 }
+  ],
+
+  parking: [
+    /* starts east of the pedestrian walkway, so no bay reaches the personnel gate */
+    { id: 'P-VIS',   x: 36,  y: -20, w: 22, h: 11, bays: 8,
+      name: 'Visitor parking', name_ar: 'مواقف الزوار' },
+    { id: 'P-STAFF', x: -22, y: 2,   w: 11, h: 30, bays: 12,
+      name: 'Staff parking', name_ar: 'مواقف الموظفين' }
+  ],
+
+  docks: [
+    { id: 'DK-IN',  x: -12, y: 2,  w: 10, h: 10, serves: 'D1',
+      name: 'Receiving', name_ar: 'الاستلام' },
+    { id: 'DK-OUT', x: 2,   y: 38, w: 14, h: 10, serves: 'D2',
+      name: 'Dispatch', name_ar: 'الشحن' }
+  ],
+
+  yard: [
+    /* x 76 put it a metre inside R-EAST; the incomer now stands clear of the road */
+    { kind: 'substation', x: 74,  y: 2,  w: 6,   h: 4,   z: 3.0, name: 'Main incomer / substation', name_ar: 'محطة التغذية الرئيسية' },
+    { kind: 'dieseltank', x: 76,  y: 8,  w: 3,   h: 3,   z: 2.4, name: 'Diesel tank', name_ar: 'خزان الديزل' },
+    { kind: 'scrapbin',   x: 76,  y: 14, w: 5,   h: 2.5, z: 1.6, name: 'Scrap skip', name_ar: 'حاوية السكراب' },
+    { kind: 'waterTank',  x: 76,  y: 19, w: 3.5, h: 3.5, z: 4.0, name: 'Water tank', name_ar: 'خزان المياه' },
+    { kind: 'trailer',    x: 4,   y: 40, w: 13,  h: 2.6, z: 3.6, name: 'Trailer at dispatch', name_ar: 'مقطورة الشحن', load: 'product' },
+    { kind: 'trailer',    x: -11, y: 3,  w: 2.6, h: 12,  z: 3.6, name: 'Trailer at receiving', name_ar: 'مقطورة الاستلام', load: 'sheet' }
+  ],
+
+  /* the security layer, made visible. 15 Nov 2026: placement is no longer a hand arrangement. The eight
+     named cameras (corners, gates, docks) are fixed; the rest were added by a greedy fill until the fence
+     line and the yard grid were covered (yard.js computes and shows the result, blind tiles included).
+     Still a PLANNING layout - lens, mounting height and obstructions belong to a hardware survey. */
+  cameraPoles: [
+    { id: 'CP1', x: -22, y: -20, z: 6.0, aim: [8, 10], reach: 38, covers: 'SW corner, front and west fence', covers_ar: 'الزاوية الجنوبية الغربية' },
+    { id: 'CP2', x: 94, y: -20, z: 6.0, aim: [64, 10], reach: 38, covers: 'SE corner, front and east fence', covers_ar: 'الزاوية الجنوبية الشرقية' },
+    { id: 'CP3', x: -22, y: 56, z: 6.0, aim: [8, 26], reach: 38, covers: 'NW corner, dispatch yard', covers_ar: 'الزاوية الشمالية الغربية وساحة الشحن' },
+    { id: 'CP4', x: 94, y: 56, z: 6.0, aim: [64, 26], reach: 38, covers: 'NE corner', covers_ar: 'الزاوية الشمالية الشرقية' },
+    { id: 'CP5', x: 24, y: -16, z: 5.0, aim: [18, -22], reach: 14, covers: 'Main gate + barrier', covers_ar: 'البوابة الرئيسية والحاجز' },
+    { id: 'CP6', x: 34, y: -16, z: 5.0, aim: [32, -22], reach: 14, covers: 'Personnel gate and walkway', covers_ar: 'بوابة الأفراد والممشى' },
+    { id: 'CP7', x: 1, y: 39, z: 5.0, aim: [8, 44], reach: 16, covers: 'Dispatch dock', covers_ar: 'ساحة الشحن' },
+    { id: 'CP8', x: -10, y: 1, z: 5.0, aim: [-6, 7], reach: 14, covers: 'Receiving dock', covers_ar: 'ساحة الاستلام' },
+    { id: 'CP9', x: 56, y: 56.5, z: 6.0, aim: [36, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP10', x: 20, y: -20.5, z: 6.0, aim: [40, -0.5], reach: 38, covers: 'Front yard and parking', covers_ar: 'الساحة الأمامية والمواقف' },
+    { id: 'CP11', x: 2, y: -21.4, z: 6.0, aim: [-18, -21.4], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    { id: 'CP12', x: 2, y: 56.5, z: 6.0, aim: [-18, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP13', x: 68, y: -20.5, z: 6.0, aim: [88, -20.5], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    { id: 'CP14', x: 68, y: 56.5, z: 6.0, aim: [88, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP15', x: 74, y: 56.5, z: 6.0, aim: [54, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP16', x: 38, y: -20.5, z: 6.0, aim: [18, -20.5], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    { id: 'CP17', x: 94.5, y: -8, z: 6.0, aim: [94.5, 12], reach: 38, covers: 'East fence', covers_ar: 'السور الشرقي' },
+    { id: 'CP18', x: -22.5, y: -8, z: 6.0, aim: [-22.5, 12], reach: 38, covers: 'West fence', covers_ar: 'السور الغربي' },
+    { id: 'CP19', x: -4, y: 56.5, z: 6.0, aim: [16, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP20', x: 32, y: -20.5, z: 6.0, aim: [52, -20.5], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    /* added with the second guard room: the dispatch gate had no camera of its own either */
+    { id: 'CP21', x: 28.5, y: 52.5, z: 5.0, aim: [34, 58], reach: 16, covers: 'Dispatch gate and its guard room', covers_ar: 'بوابة الشحن وغرفة حراستها' }
+  ],
+
+  /* indoor cameras ADDED to module A2's own thirteen (layers.json cameras.units), placed the same way:
+     a greedy fill of whatever the hall floor grid still had uncovered. Domes look straight down. */
+  cameraIndoorExtra: [
+    { id: 'C14', x: 63, y: 8, z: 5.0, aim: [63, 8], reach: 8.5, zone: 'PNT' },
+    { id: 'C15', x: 33, y: 13, z: 5.0, aim: [33, 13], reach: 8.5, zone: 'FAB' },
+    { id: 'C16', x: 23, y: 33, z: 5.0, aim: [23, 33], reach: 8.5, zone: 'OFF' },
+    { id: 'C17', x: 38, y: 28, z: 5.0, aim: [38, 28], reach: 8.5, zone: 'ASM' },
+    { id: 'C18', x: 8, y: 13, z: 5.0, aim: [8, 13], reach: 8.5, zone: 'RAW' },
+    { id: 'C19', x: 63, y: 23, z: 5.0, aim: [63, 23], reach: 8.5, zone: 'ELP' },
+    { id: 'C20', x: 8, y: 28, z: 5.0, aim: [8, 28], reach: 8.5, zone: 'FG' },
+    { id: 'C21', x: 63, y: 33, z: 5.0, aim: [63, 33], reach: 8.5, zone: 'CMP' },
+    { id: 'C22', x: 8, y: 3, z: 5.0, aim: [8, 3], reach: 8.5, zone: 'RAW' },
+    { id: 'C23', x: 28, y: 13, z: 5.0, aim: [28, 6], reach: 15, zone: 'FAB' },
+    { id: 'C24', x: 58, y: 8, z: 5.0, aim: [65, 8], reach: 15, zone: 'PNT' },
+    { id: 'C25', x: 13, y: 28, z: 5.0, aim: [6, 28], reach: 15, zone: 'FG' }
+  ],
+
+  /* ADMINISTRATION BUILDING.
+     16 Nov 2026 (Jamal): it used to be a thin open-topped box stuck to the hall's east wall - a
+     service position, and it did not read as an office building. An administration block belongs
+     at the front, beside the main gate, where visitors arrive. It is now TWO STOREYS west (left)
+     of the main gate G1, with its own forecourt, entrance canopy, signage band, stair core and
+     roof plant. Ground floor: reception + the board room with the wall screen. First floor: the
+     open office. Open-topped per floor so both can be seen from above.
+
+     16 Nov 2026, second pass (Jamal): "the administration building is directly on the main gate.
+     If it stays on the same side but you push it into the corner, the corner is better."
+     He is right and it is the normal arrangement: an office block sitting on the gate fights the
+     truck sweep and puts a glass front where the lorries turn. It is now in the SOUTH-WEST
+     CORNER of the plot, same side, clear of the entry road (R-ENTRY, x 14..23) and of the gate
+     leaf, with the entrance still facing east toward the gate so a visitor arriving at G1 drives
+     the front road and reaches the canopy head on. */
+  admin: {
+    x: -19, y: -19.5, w: 14, h: 10.5, z: 7.2, floors: 2, floorH: 3.4,
+    entrance: 'E',                               /* the side the canopy and the doors are on - faces the gate */
+    name: 'Administration', name_ar: 'مبنى الإدارة'
+  },
+  adminForecourt: { x: -21, y: -9, w: 18, h: 3.4 },   /* paved walk + drop-off between the building and the south road */
+
+  /* ================= THE PEDESTRIAN ROUTE =================
+     16 Nov 2026 (Jamal): "the personnel gate - the people are in front of the parking! How is
+     that supposed to work?" It was: G2 sat at x 46, which is the middle of the visitor parking
+     bays, so anybody walking in stepped straight into a reversing car and then had to cross the
+     whole forecourt with no marked route.
+     Three things fixed together, which is the only way this one can be fixed:
+       - G2 moves to x 32, immediately beside the guard post (x 26..30.5) - a personnel gate
+         belongs where the guard can see who comes through it;
+       - the visitor parking starts at x 36 instead of x 30, so no bay touches the gate;
+       - a marked, railed WALKWAY runs from the gate up to the front road and then west along it
+         to the administration entrance, so the route from the turnstile to a desk never crosses
+         a vehicle lane unprotected.
+     yard.js draws these as a tinted strip with a rail on the traffic side.
+
+     A RAIL MUST NOT CROSS A ROAD. The first version of the front walkway ran unbroken from
+     x -4 to x 31 with a rail along its north edge - straight across R-ENTRY, the lorry route in
+     from the main gate. A continuous guardrail across a traffic lane is not a safety feature,
+     it is a barrier, and it would have been built. The walk is in two railed runs now with a
+     MARKED CROSSING between them: no rail, zebra bars on the tarmac, which is what a plant
+     actually does where a footway meets a vehicle lane. Found by the geometry audit, not by eye. */
+  walkways: [
+    { id: 'W-GATE',   x: 30.8, y: -22,   w: 2.4,  h: 13.4, rail: 'both',
+      name: 'Pedestrian route from the personnel gate', name_ar: 'ممشى من بوابة الأفراد' },
+    { id: 'W-FRONT-E', x: 23.2, y: -10.6, w: 10.0, h: 2.4, rail: 'N',
+      name: 'Front walkway, gate side', name_ar: 'ممشى الواجهة — جهة البوابة' },
+    { id: 'W-CROSS',   x: 13.8, y: -10.6, w: 9.4,  h: 2.4, crossing: true,
+      name: 'Marked crossing over the entry road', name_ar: 'معبر مخطّط فوق طريق الدخول' },
+    { id: 'W-FRONT-W', x: -4,   y: -10.6, w: 17.8, h: 2.4, rail: 'N',
+      name: 'Front walkway to administration', name_ar: 'ممشى الواجهة للإدارة' }
+  ],
+
+  /* live screens in the plant. kind = which board they show (dash.js drawScreen); lens = what a click opens */
+  screens: [
+    { id: 'TV1', x: 24, y: 18, z: 4.3, w: 3.2, kind: 'andon', lens: 'prod' },
+    { id: 'TV2', x: 50, y: 18, z: 4.3, w: 3.2, kind: 'andon', lens: 'prod' }
+  ],
+
+  /* site events that belong to the yard, not to the simulator's hall scenario. */
+  siteEvents: [],
+
+  /* ================= VIOLATIONS =================
+     16 Nov 2026 (Jamal): "the trailer is parked wrong on purpose, and the model shows nothing -
+     no red, no box, nothing that says VIOLATION."
+     A violation is not the same thing as a safety EVENT. An event is a moment the system caught
+     (a truck and a person in the same lane section); it flashes and it is gone. A violation is a
+     STANDING condition that stays wrong until somebody moves something - and it must be visible
+     as long as it is standing, on the object itself.
+     So each one carries the box it is wrong inside: the model draws a red cage around that box,
+     a hanging tag with its code, and the camera that sees it. open/close are minutes of the demo
+     day; a violation with no `close` stands all day.
+
+     kind drives the icon and the rule text. sev: hi (stop now) | md (fix today) | lo (housekeeping).
+     Every one of these is a DEMO SCENARIO, not an observation - the safety panel says so.
+
+     16 Nov 2026, second pass (Jamal): "the trailer has to carry a red mark IN THE SAFETY LENS.
+     The mark is static, the warning is not even red, and it is fixed in every lens."
+     Two separate things were wrong and they are fixed separately:
+       SEVERITY   blocking a FIRE LANE is not a fix-today matter. It is sev: hi, which is what
+                  makes the cage red and makes it pulse. md was simply the wrong grading.
+       OWNERSHIP  `owners` is the list of lenses whose job this violation is. The model draws it
+                  at full strength in an owning lens and does not draw it at all in the others -
+                  a violation is not a watermark, it belongs to whoever has to act on it.
+                  app.js reads this; no lens id is hard-coded there. */
+  violations: [
+    { id: 'V1', kind: 'vehicle_blocking', sev: 'hi', open: 96, zone: 'YARD', cam: 'CP8',
+      owners: ['safety', 'security', 'ops', 'owner', 'warehouse'],
+      box: { x: -11.4, y: 2.6, w: 3.4, h: 12.8, z: 4.0 },
+      code: 'YRD-02',
+      what: 'Trailer parked across the staff parking bays and the fire lane',
+      what_ar: 'مقطورة واقفة على مواقف الموظفين وعلى مسلك الإطفاء',
+      rule: 'Fire lane and marked bays must stay clear', rule_ar: 'مسلك الإطفاء والمواقف المخطّطة يجب أن تبقى خالية',
+      fix: 'Move the trailer onto the receiving apron', fix_ar: 'انقل المقطورة إلى ساحة الاستلام' },
+
+    /* 17 Nov 2026: moved, and the move was found by the new hall geometry audit rather than by
+       eye. The box used to run x 1.4..4.4 at y 33.2..34.8 - INSIDE the crane's load lane
+       (x 4..56 on lane y 34.5), so the 5 t load swept through the very stack this violation
+       marks. It also sat in the north-west corner, nowhere near the route it names. It is now
+       in front of the personnel door D3, standing on the hatched keep-clear square the 5S
+       layer paints there, which is what "stacked on the emergency exit route" means. */
+    { id: 'V2', kind: 'obstructed_exit', sev: 'hi', open: 150, close: 690, zone: 'FG', cam: 'C20',
+      owners: ['safety', 'ops', 'owner', 'warehouse', 'prod', 'lean'],
+      box: { x: 1.0, y: 23.3, w: 2.6, h: 2.8, z: 1.3 },
+      code: 'EXT-01',
+      what: 'Finished panels stacked on the emergency exit route',
+      what_ar: 'لوحات جاهزة مصفوفة على طريق مخرج الطوارئ',
+      rule: 'Exit routes keep 1.2 m clear at all times', rule_ar: 'ممرات المخارج يجب أن تبقى خالية بعرض 1.2 متر دائماً',
+      fix: 'Clear the route; stage on the marked floor square', fix_ar: 'أخلِ الممر وصُفّ على المربع المخطّط' },
+
+    { id: 'V3', kind: 'blocked_panel', sev: 'md', open: 234, zone: 'UTL', cam: 'C24',
+      owners: ['safety', 'maint', 'energy', 'ops', 'owner'],
+      box: { x: 65.2, y: 6.4, w: 2.2, h: 1.2, z: 1.9 },
+      code: 'ELC-03',
+      what: 'Working clearance in front of the distribution board is blocked',
+      what_ar: 'مسافة العمل أمام لوحة التوزيع مسدودة',
+      rule: 'Keep 0.9 m working clearance in front of live boards', rule_ar: 'اترك 0.9 متر خالية أمام اللوحات المكهربة',
+      fix: 'Remove the stored items from the clearance zone', fix_ar: 'أزل الأغراض المخزّنة من منطقة المسافة' },
+
+    /* ---------------------------------------------------------------------------------------
+       17 Nov 2026 (Jamal): "I want a wrong practice like this, caught, in EVERY area - safety
+       has a couple, security too, and put somebody walking inside the plant unauthorised."
+       Three violations covered safety, the yard and the electrical board; nine domains had
+       nothing, which made the product look like a safety camera rather than a plant system.
+       There are twelve now and EVERY LENS THAT OWNS PEOPLE OWNS AT LEAST ONE, so a buyer in
+       any chair sees the thing his own department would be asked about.
+       Each still declares its `owners`, so it is drawn at full strength in the lenses whose job
+       it is and NOT AT ALL in the others. Severity is graded three ways now, because grading
+       everything red is the same as grading nothing: hi = stop now, md = fix today,
+       lo = housekeeping. Four of the twelve are hi; that is the point of a grade.
+       V10 is the first MOVING violation: it carries `follow`, so the cage, the ring and the tag
+       are parented to a person and travel with him instead of sitting on a box. A trespasser is
+       not a standing condition in a place - he is a standing condition wherever he happens to
+       be, and a system that can only mark furniture would miss him.
+       Every box below was checked against layout.json assets, props, aisles and the crane load
+       lane before it was written. Every one of these is a DEMO SCENARIO, not an observation.
+       --------------------------------------------------------------------------------------- */
+
+    { id: 'V4', kind: 'ppe', sev: 'hi', open: 168, close: 258, zone: 'FAB', cam: 'C15',
+      owners: ['safety', 'prod', 'supervisor', 'owner', 'ops'],
+      box: { x: 27.0, y: 7.4, w: 1.4, h: 1.4, z: 1.9 },
+      code: 'PPE-01',
+      what: 'Welding at station 2 with the screen pushed aside and no face shield',
+      what_ar: 'لحام عند المحطة 2 والستارة مزاحة وبلا واقي وجه',
+      rule: 'Arc work needs the screen in place and a face shield worn', rule_ar: 'عمل القوس يتطلب الستارة في موضعها وواقي وجه',
+      fix: 'Stop the arc, set the screen, issue the shield', fix_ar: 'أوقف القوس، وأعد الستارة، وسلّمه الواقي' },
+
+    { id: 'V5', kind: 'untested_batch', sev: 'md', open: 288, zone: 'QC', cam: 'C08',
+      owners: ['quality', 'prod', 'ops', 'owner', 'warehouse'],
+      box: { x: 17.4, y: 21.0, w: 1.8, h: 1.4, z: 1.5 },
+      code: 'QAL-02',
+      what: 'Panels staged on the dispatch side of test with no test stamp',
+      what_ar: 'لوحات مصفوفة على جهة الشحن من الفحص وبدون ختم فحص',
+      rule: 'Nothing leaves test unstamped', rule_ar: 'لا يخرج شيء من الفحص بلا ختم',
+      fix: 'Hold the batch, test it, stamp it', fix_ar: 'أوقف الدفعة، وافحصها، ثم اختمها' },
+
+    { id: 'V6', kind: 'calibration', sev: 'md', open: 0, zone: 'QC', cam: 'C08',
+      owners: ['quality', 'maint', 'ops'],
+      box: { x: 19.0, y: 23.0, w: 4.0, h: 3.0, z: 2.0 },
+      code: 'CAL-01',
+      what: 'HV test set calibration certificate expired',
+      what_ar: 'شهادة معايرة جهاز فحص الضغط العالي منتهية',
+      rule: 'A measuring instrument out of calibration measures nothing', rule_ar: 'جهاز قياس خارج المعايرة لا يقيس شيئاً',
+      fix: 'Send it for calibration; use the second set meanwhile', fix_ar: 'أرسله للمعايرة واستخدم الجهاز الثاني ريثما يعود' },
+
+    { id: 'V7', kind: 'wip_over_limit', sev: 'lo', open: 330, zone: 'ASM', cam: 'C17',
+      owners: ['lean', 'prod', 'supervisor', 'warehouse'],
+      box: { x: 37.4, y: 26.0, w: 2.2, h: 2.2, z: 1.6 },
+      code: 'LEN-03',
+      what: 'WIP stacked off its marked square and above the limit at assembly',
+      what_ar: 'عمل تحت التشغيل مصفوف خارج مربعه المخطّط وفوق الحد عند التجميع',
+      rule: 'Everything stands on its marked footprint, and the square is the limit', rule_ar: 'كل شيء يوضع على مربعه المخطّط، والمربع هو الحد',
+      fix: 'Pull the overflow back to the supermarket', fix_ar: 'أعد الفائض إلى السوبرماركت' },
+
+    { id: 'V8', kind: 'tools_off_board', sev: 'lo', open: 60, close: 606, zone: 'MNT', cam: 'C16',
+      owners: ['lean', 'maint', 'supervisor'],
+      box: { x: 29.2, y: 31.1, w: 1.8, h: 0.8, z: 1.2 },
+      code: 'LEN-04',
+      what: 'Three outlines empty on the workshop shadow board, tools left on the bench',
+      what_ar: 'ثلاثة مواضع خالية على لوحة الظل في الورشة، والعدّة متروكة على الطاولة',
+      rule: 'A tool lives on its outline, so a missing one is a hole you can see', rule_ar: 'موضع العدّة على رسمها، فالناقصة يظهر مكانها فارغاً',
+      fix: 'Return the three tools to the board at the end of the job', fix_ar: 'أعد العدد الثلاث إلى اللوحة عند انتهاء المهمة' },
+
+    { id: 'V9', kind: 'air_leak', sev: 'md', open: 0, zone: 'UTL', cam: 'C04',
+      owners: ['energy', 'maint', 'lean', 'ops', 'owner'],
+      box: { x: 67.0, y: 4.6, w: 1.4, h: 1.2, z: 2.2 },
+      code: 'ENR-02',
+      what: 'Compressed air leaking on the ring main at the compressor header',
+      what_ar: 'تسرّب هواء مضغوط على الخط الرئيسي عند هيدر الضاغط',
+      rule: 'Compressed air is the most expensive utility in the plant to waste', rule_ar: 'الهواء المضغوط أغلى مرفق في المصنع يمكن إهداره',
+      fix: 'Clamp and reseal the header joint at the next stop', fix_ar: 'أحكم الربط وأعد إحكام وصلة الهيدر عند أول توقف' },
+
+    /* THE MOVING ONE. follow names a tagged person (people.json posts.roam), and yard.js
+       parents the whole mark to him. open/close are the minutes he is inside. */
+    { id: 'V10', kind: 'unauthorised_person', sev: 'hi', open: 312, close: 474, zone: 'A-MAIN', cam: 'C12',
+      follow: 'INTRUDER',
+      owners: ['security', 'safety', 'owner', 'ops'],
+      box: { x: 0, y: 0, w: 1.3, h: 1.3, z: 1.9 },
+      where: 'walking the main aisle and the north bay, unescorted',
+      where_ar: 'يتجوّل في الممر الرئيسي والبَي الشمالي بلا مرافق',
+      code: 'SEC-04',
+      what: 'A person on the floor with no badge, no helmet and no escort',
+      what_ar: 'شخص على الأرض بلا بطاقة ولا خوذة ولا مرافق',
+      rule: 'Nobody walks the floor without a badge, PPE and an escort', rule_ar: 'لا يتحرك أحد على الأرض بلا بطاقة ومعدات وقاية ومرافق',
+      fix: 'Intercept him, walk him to reception, log the entry he came through', fix_ar: 'أوقفه، وأعده إلى الاستقبال، وسجّل من أين دخل' },
+
+    { id: 'V11', kind: 'gate_unattended', sev: 'md', open: 420, close: 540, zone: 'YARD', cam: 'CP21',
+      owners: ['security', 'warehouse', 'ops', 'owner'],
+      box: { x: 29.5, y: 56.6, w: 9.0, h: 1.6, z: 2.6 },
+      code: 'SEC-05',
+      what: 'Dispatch gate left open and the barrier up with no lorry at it',
+      what_ar: 'بوابة الشحن متروكة مفتوحة والحاجز مرفوع ولا توجد شحنة قائمة',
+      rule: 'The gate the stock leaves through stays shut between lorries', rule_ar: 'البوابة التي تخرج منها البضاعة تبقى مغلقة بين الشحنات',
+      fix: 'Drop the barrier and shut the gate until the next lorry is booked in', fix_ar: 'أنزل الحاجز وأغلق البوابة حتى وصول الشحنة التالية' },
+
+    { id: 'V12', kind: 'aisle_blocked', sev: 'md', open: 210, zone: 'WIR', cam: 'C13',
+      owners: ['warehouse', 'safety', 'prod', 'lean', 'ops'],
+      box: { x: 45.6, y: 19.0, w: 2.4, h: 1.6, z: 1.4 },
+      code: 'MAT-06',
+      what: 'Sheet stock stored on the edge of the main aisle',
+      what_ar: 'صاج مخزّن على حرف الممر الرئيسي',
+      rule: 'The main aisle is 3.6 m and stays 3.6 m', rule_ar: 'الممر الرئيسي 3.6 متر ويبقى 3.6 متر',
+      fix: 'Move it onto a marked position in the supermarket', fix_ar: 'انقله إلى موقع مخطّط في السوبرماركت' }
+  ],
+
+  /* ================= THE RECORDER =================
+     The security lens kept claiming 45 cameras and never said where any of it is recorded.
+     This is the NVR / VMS side, stated plainly because it is what a buyer asks about second.
+     retention_days and storage_tb are EXAMPLE figures sized from the channel count; the real
+     numbers come from a hardware quotation. */
+  recorder: {
+    rooms: [
+      { id: 'NVR-1', name: 'Server room, administration', name_ar: 'غرفة السيرفر — الإدارة',
+        x: -7.0, y: -14.2, channels: 24, role: 'Outdoor, gates and yard', role_ar: 'الساحة والبوابات والسور' },
+      { id: 'NVR-2', name: 'Panel room, production office', name_ar: 'غرفة اللوحات — مكتب الإنتاج',
+        x: 24.4, y: 33.6, channels: 24, role: 'Hall floor', role_ar: 'أرض الصالة' }
+    ],
+    retention_days: 30,
+    storage_tb: 24,
+    resolution: '4 MP · 15 fps',
+    sync: 'every clip is stamped with the same plant clock the machines use',
+    sync_ar: 'كل مقطع مختوم بساعة المصنع نفسها التي تعمل عليها الآلات',
+    example: true
+  },
+
+  /* ================= SYSTEM HEALTH =================
+     16 Nov 2026. The lens nobody asks for until the day a number is wrong and nobody can say
+     since when. Every figure on every other screen rests on a device still reporting; when one
+     goes quiet the honest answer is "this is not measured any more", never a stale last value
+     held on screen as if it were live.
+
+     The real version is a heartbeat per device. These three outages are a DECLARED DEMO
+     SCENARIO, in minutes of the demo day, and the panel says so. `affects` is how one gateway
+     takes several cameras with it - the thing a device list never shows and an operator always
+     discovers the hard way. */
+  systemHealth: {
+    heartbeat_s: 30,                     /* a device is called silent after 3 missed beats */
+    silent: [
+      { id: 'M05', kind: 'clamp', since: 402,
+        what: 'CT clamp stopped reporting', what_ar: 'الـ CT clamp توقف عن الإرسال',
+        effect: 'this machine has no state and no energy from 13:42 on - it is not "running", it is unknown',
+        effect_ar: 'هذه الآلة بلا حالة وبلا طاقة منذ 13:42 — ليست "تعمل"، بل مجهولة' },
+      { id: 'C17', kind: 'camera', since: 188,
+        what: 'Camera offline', what_ar: 'الكاميرا متوقفة',
+        effect: 'the assembly bay loses its own view; the aisle camera still covers part of it',
+        effect_ar: 'منطقة التجميع فقدت كاميرتها؛ وكاميرا الممر ما زالت تغطي جزءاً منها' },
+      { id: 'GW-2', kind: 'gateway', since: 548, affects: ['C19', 'C21', 'C25'],
+        what: 'Edge gateway unreachable', what_ar: 'الـ gateway غير متصل',
+        effect: 'three cameras behind it went with it - one device, three blind zones',
+        effect_ar: 'ثلاث كاميرات خلفه توقفت معه — جهاز واحد، وثلاث مناطق عمياء' }
+    ],
+    gateways: [
+      { id: 'GW-1', name: 'Gateway, fabrication bay', name_ar: 'Gateway — بَي التشكيل', x: 34, y: 14 },
+      { id: 'GW-2', name: 'Gateway, assembly bay', name_ar: 'Gateway — بَي التجميع', x: 41, y: 20 },
+      { id: 'GW-3', name: 'Gateway, yard', name_ar: 'Gateway — الساحة', x: 76, y: 24 }
+    ],
+    example: true
+  },
+
+  trees: [
+    [28, -21], [34, -21], [40, -21], [52, -21], [58, -21],
+    [-20, -4], [-20, 36], [92, -4], [92, 30], [64, -21]
+  ]
+};
 
 /* packages.js - THE THREE MODELS, and the one place that knows which one is switched on.
  *
@@ -2037,7 +3100,13 @@ window.TELMERA = window.TELMERA || {};
       }).join('') : empty(S('ui.no-changeover-so-far-today', ar)));
   }
 
-  function kaizenPanel(ar) {
+  /* THE MONEY RULE REACHES THE KAIZEN REGISTER TOO. The panel is shown on the owner's lens
+     (money) and on the lean lens (no money), and it was printing "SAR 7,200 a month" against
+     every improvement on both. One event, two renderings - the same fix as `why_nomoney` on
+     25 Nov: the reader without financial permission gets the improvement, its owner and its
+     state, and no riyal. Caught by the app harness the day the laptop started showing this
+     page. (26 Nov 2026) */
+  function kaizenPanel(ar, money) {
     var K = LN && LN.kaizen; if (!K) return '';
     var closed = K.raised_month ? K.done_month / K.raised_month : 0;
     return h4((S('ui.the-improvement-register-kaizen', ar)) + exTag(ar)) +
@@ -2046,8 +3115,9 @@ window.TELMERA = window.TELMERA || {};
            kpi(K.done_month, S('ui.done', ar), css('run')),
            kpi(pct(closed), S('ui.closure-rate', ar), closed >= (K.closed_rate_target || 0.7) ? css('run') : css('fault'))) +
       (K.top || []).map(function (x) {
+        var worth = !money ? '' : (x.saved ? 'SAR ' + num(x.saved) + (S('ui.a-month', ar)) : (S('ui.not-costed-yet', ar)));
         return evt(x.state === 'done' ? css('run') : css('setup'), (LF(x, 'what', ar)),
-          (x.saved ? 'SAR ' + num(x.saved) + (S('ui.a-month', ar)) : (S('ui.not-costed-yet', ar))) + ' · ' +
+          (worth ? worth + ' · ' : '') +
           L2(OWN[x.own] || OWN.prod, ar) + ' · ' + (x.state === 'done' ? (S('ui.implemented', ar)) : (S('ui.in-progress-2', ar))));
       }).join('');
   }
@@ -2149,7 +3219,7 @@ window.TELMERA = window.TELMERA || {};
                   kpi('SAR ' + num(e.standbySar), S('ui.burned-while-idle', ar), css('fault')),
                   kpi((q.fpy * 100).toFixed(1) + '%', S('ui.first-pass-yield', ar))) + B.worst(t, ar, true),
         today: h4(S('ui.who-owns-the-loss', ar)) + B.owners(p, ar, true),
-        record: recordPanel(ar, METRICS.owner) + kaizenPanel(ar) +
+        record: recordPanel(ar, METRICS.owner) + kaizenPanel(ar, true) +
                 (rangeDef().days <= 1 ? kpis(kpi('SAR ' + num(tot30), S('ui.total-last-30-days', ar), css('fault')), kpi('SAR ' + num(ss.avg * 26), S('ui.a-month-at-this-rate', ar))) : ''),
         act: h4(S('ui.the-three-things-to-fix', ar)) + B.top3(ar),
         note: S('ui.figures-use-the-14-scored-machines-unlogged-', ar) };
@@ -2308,7 +3378,7 @@ window.TELMERA = window.TELMERA || {};
              h4((S('ui.the-five-s-s-which-one-the-plant-is-weak-at', ar)) + exTag(ar)) + fiveSStepsPanel(ar) +
              h4((S('ui.5s-by-section-weakest-first', ar)) + exTag(ar)) + fiveSPanel(ar, 8),
         today: h4(S('ui.today-s-waste-and-where-each-line-comes-from', ar)) + wastePanel(t, ar),
-        record: recordPanel(ar, METRICS.lean) + kaizenPanel(ar),
+        record: recordPanel(ar, METRICS.lean) + kaizenPanel(ar, false),   /* the lean lens has no financial permission */
         act: taktPanel(t, ar) + smedPanel(t, ar) + standardPanel(ar),
         note: S('ui.changeover-waiting-breakdowns-unlogged-stops', ar) };
     },
@@ -3665,7 +4735,7 @@ window.TELMERA = window.TELMERA || {};
 })(window.TELMERA);
 </script>
 <script>window.TELMERA = window.TELMERA || {};
-window.TELMERA.profile = {"screen":"sc-laptop","kpiMax":7,"nav":"side"};</script>
+window.TELMERA.profile = {"screen":"sc-laptop","kpiMax":7,"nav":"side","dash":true};</script>
 <script>/* plant3d.js - THE PLANT IN THREE DIMENSIONS, INSIDE THE APP.
  *
  * This file is small and ships in index.html. What is big - three.js, scene.js and machines.js -
@@ -4027,6 +5097,7 @@ window.TELMERA = window.TELMERA || {};
   var lang = 'ar', IA = null, LENS = {}, booted = false, route = { k: 'home' }, showAll = false;
   function P() { return T.profile || { screen: 'sc-phone', kpiMax: 3, nav: 'bottom' }; }
   function wide() { return P().nav === 'side'; }
+  function desk() { return !!P().dash; }          /* the laptop shows the model's own dashboard */
 
   function S(k, v) { return T.i18n(k, lang === 'ar', v); }
   function ar() { return lang === 'ar'; }
@@ -4224,6 +5295,19 @@ window.TELMERA = window.TELMERA || {};
   }
 
   /* the laptop rail: on a mouse screen nothing should be two clicks away */
+  /* THE DESK TOOLBAR. The dashboard is a page about a MOMENT and a PERIOD, so both belong on
+     screen the whole time, not inside the plant page: dash.js reads the day clock and the range
+     on every repaint. The phone keeps its slider on the plant page only - there is no room. */
+  function deskbarHTML() {
+    if (!desk()) return '';
+    var t = T.day.t, cur = T.dash.getRange ? T.dash.getRange() : 'day';
+    var r = (T.ranges || []).map(function (x) {
+      return '<button data-range="' + x.id + '" aria-pressed="' + (x.id === cur) + '">' + esc(S(x.key)) + '</button>';
+    }).join('');
+    return '<div class="seg rangeSeg" role="group" aria-label="' + esc(S('app.time')) + '">' + r + '</div>'
+      + '<span class="dbT">' + S('app.time') + '</span><b class="num" id="tNow">' + T.dash.core.hhmm(t) + '</b>'
+      + '<input type="range" data-time min="0" max="839" step="1" value="' + Math.round(t) + '" aria-label="' + esc(S('app.time')) + '">';
+  }
   function railHTML() {
     var out = '<button class="railItem" data-nav="home"' + (route.k === 'home' ? ' aria-current="page"' : '') + '>'
             + S('app.home') + '</button>';
@@ -4257,7 +5341,16 @@ window.TELMERA = window.TELMERA || {};
     if (home || wide()) $('title').innerHTML = '<span class="wm"><b>T</b>ELMERA</span>';
     else $('title').textContent = route.k === 'plant' ? S('app.plant') : lensName(route.id);
     $('now').innerHTML = home ? nowStrip() : '';
-    $('tiles').innerHTML = home ? homeHTML() : (route.k === 'plant' ? plantHTML() : lensHTML(route.id));
+    if ($('deskbar')) { $('deskbar').innerHTML = deskbarHTML(); $('deskbar').hidden = !desk(); }
+    /* ON THE LAPTOP A LENS IS THE MODEL'S OWN PAGE. dash.js builds it - question, answer,
+       figures each clickable to where they come from, the hero chart, the advisor and the
+       30-day record - and paints it into #pgBody. We only decide which of the two containers
+       is on screen. Everything else (home, the plant) stays the app's. */
+    var onDash = desk() && route.k === 'lens' && T.dash.page && lensOf(route.id);
+    if ($('page')) $('page').hidden = !onDash;
+    $('tiles').hidden = !!onDash;
+    if (onDash) T.dash.page(lensOf(route.id), lang, null);
+    else $('tiles').innerHTML = home ? homeHTML() : (route.k === 'plant' ? plantHTML() : lensHTML(route.id));
     $('note').textContent = home ? S('app.stage-note') : '';
     var id = T.pkg ? T.pkg.id() : '', tier = T.pkg ? T.pkg.tier() : '';
     Array.prototype.forEach.call(document.querySelectorAll('[data-model]'), function (b) {
@@ -4321,6 +5414,7 @@ window.TELMERA = window.TELMERA || {};
         if ((x = c('[data-nav]')))   { var n = x.getAttribute('data-nav'); go(n === 'home' ? 'home' : n, n); return; }
         if ((x = c('[data-back]')))  { go('home'); return; }
         if ((x = c('[data-more]')))  { showAll = !showAll; render(); return; }
+        if ((x = c('[data-range]')))  { T.dash.setRange(x.getAttribute('data-range')); render(); return; }
         if ((x = c('[data-plant-view]'))) {
           var v = x.getAttribute('data-plant-view');
           if (T.plant3d) { if (v === '3d') T.plant3d.show(); else T.plant3d.plan(); }
@@ -4337,9 +5431,12 @@ window.TELMERA = window.TELMERA || {};
       document.addEventListener('input', function (e) {
         if (!e.target || !e.target.hasAttribute || !e.target.hasAttribute('data-time')) return;
         T.day.set(+e.target.value);
-        $('tNow').textContent = T.dash.core.hhmm(T.day.t);
-        $('planWrap').innerHTML = planHTML(); $('legend').innerHTML = legendHTML();
-        if (T.plant3d) T.plant3d.repaint();     /* the same minute, in the other view */
+        if ($('tNow')) $('tNow').textContent = T.dash.core.hhmm(T.day.t);
+        /* the same minute, everywhere it is shown: the plan, the 3D and the desk dashboard */
+        if ($('planWrap')) $('planWrap').innerHTML = planHTML();
+        if ($('legend')) $('legend').innerHTML = legendHTML();
+        if (T.plant3d) T.plant3d.repaint();
+        if (desk() && route.k === 'lens' && lensOf(route.id)) T.dash.page(lensOf(route.id), lang, null);
       });
 
       if (isIOS() && !standalone()) {

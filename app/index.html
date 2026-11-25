@@ -500,7 +500,19 @@ h3.sec{font-size:var(--fs-micro);color:var(--dim);letter-spacing:.1em;text-trans
 .plant3d canvas{display:block;width:100%;height:56dvh;border-radius:var(--r-md);background:var(--bg);touch-action:none}
 .sc-laptop .plant3d canvas{height:68dvh}
 .perf{margin:var(--sp-8) 0 0;color:var(--dim2);font-size:var(--fs-micro);line-height:var(--lh-base);min-height:1.3em}
+
+/* ---------- the desk dashboard: the model's own page, inside the app shell ----------
+   #page carries nothing of its own but room to breathe and a scroll of its own; everything
+   inside it is styled by the model's stylesheet, sliced in by the build and scoped to #page. */
+.deskbar{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-8) var(--sp-12);
+         border-bottom:1px solid var(--line);color:var(--dim);font-size:var(--fs-micro)}
+.deskbar input[type="range"]{flex:1;min-height:var(--touch-min);accent-color:var(--accent);max-width:520px}
+.deskbar .dbT{margin-inline-start:var(--sp-8)}
+.deskbar b{color:var(--txt);font-size:var(--fs-label);min-width:3.4em}
+.rangeSeg button{letter-spacing:0}
+#page{padding:var(--sp-12);overflow:auto}
 </style>
+<style></style>
 </head>
 <body class="sc-phone">
 <div id="app">
@@ -515,7 +527,13 @@ h3.sec{font-size:var(--fs-micro);color:var(--dim);letter-spacing:.1em;text-trans
   </header>
   <nav class="rail" id="rail"></nav>
   <div class="now" id="now"></div>
-  <main><div class="tiles" id="tiles"></div></main>
+  <div class="deskbar" id="deskbar"></div>
+  <!-- THE DESK DASHBOARD. On a mouse screen a lens is not three figures: it is the page dash.js
+       builds for the model - the question, its answer, the figures, the hero chart, the advisor
+       and the 30-day record. dash.js paints into #pgBody, so the container is its shape, not
+       ours, and the phone never shows it. -->
+  <main><div class="tiles" id="tiles"></div>
+        <div id="page" hidden><div id="pgBody"></div></div></main>
   <footer id="note"></footer>
   <nav class="nav">
     <button data-nav="home" aria-current="page" data-s="app.home"></button>
@@ -725,6 +743,426 @@ window.TELMERA.i18n = (function () {
   return window.TEL.s;
 })();
 window.TELMERA.tel = window.TEL;
+
+/* site_data.js - everything OUTSIDE the hall.
+ *
+ * layout.json owns the inside of the building and is not touched here.
+ * Plan coordinates, metres, same frame as layout.json:
+ *   origin = the hall's south-west internal corner, x east, y north.
+ *   The hall therefore occupies x 0..72, y 0..36.
+ * Negative y is in front of the building (the street side).
+ *
+ * Edit the numbers here; nothing else needs to change.
+ */
+window.TELMERA = window.TELMERA || {};
+window.TELMERA.site = {
+  meta: {
+    /* The demo plant's own name. Invented and neutral on purpose - never a real
+       customer's plant. Renamed 15 Nov 2026; the previous name is retired. */
+    factory: 'Rakiza Electrical Industries',
+    factory_ar: 'ركيزة للصناعات الكهربائية',
+    note: 'VIRTUAL DEMO FACTORY - invented layout, example figures. Not a real customer and not a real plant.',
+    name_clearance: 'TBC'
+  },
+
+  plot: { x0: -24, y0: -22, x1: 96, y1: 58 },   /* 120 x 80 m = 9,600 m2 */
+  setbacks: { front: 22, west: 24, east: 24, rear: 22 },
+  fence: { height: 2.4, postEvery: 3.0 },
+
+  gates: [
+    { id: 'G1', side: 'S', at: 18, width: 10, kind: 'vehicle',
+      name: 'Main gate', name_ar: 'البوابة الرئيسية', barrier: true },
+    /* beside the guard post, not in the middle of the visitor bays - see `walkways` below */
+    { id: 'G2', side: 'S', at: 32, width: 3.5, kind: 'personnel',
+      name: 'Personnel gate', name_ar: 'بوابة الأفراد', turnstile: true },
+    { id: 'G3', side: 'N', at: 34, width: 9, kind: 'vehicle',
+      name: 'Dispatch gate', name_ar: 'بوابة الشحن', barrier: true }
+  ],
+
+  /* ================= GUARD ROOMS =================
+     17 Nov 2026 (Jamal): "I want a security room at the plant's exit as well, because there is
+     none at the exit or at the loading area."
+     He is right, and it is the gap a security man notices first: the plot had ONE guard room, on
+     the main gate at the front, and the DISPATCH gate - the one every finished panel and every
+     lorry leaves through - was an unmanned opening in the fence. A plant watches what goes out
+     harder than what comes in; that is where the stock walks.
+     So there are two now, and the second one brought its own road with it: G3 sits on the north
+     fence at x 29.5..38.5 and the north road stops at y 47, so the lorries were crossing eleven
+     metres of bare yard to reach a gate with nobody on it. R-DISPATCH joins the two. */
+  guardPosts: [
+    { id: 'GH-1', x: 26, y: -19, w: 4.5, h: 3.5, z: 3.0, gate: 'G1',
+      name: 'Guard room, main gate', name_ar: 'غرفة الحراسة — البوابة الرئيسية' },
+    { id: 'GH-2', x: 24, y: 53.5, w: 4.5, h: 3.5, z: 3.0, gate: 'G3', barrier: true,
+      name: 'Guard room, dispatch gate', name_ar: 'غرفة الحراسة — بوابة الشحن' }
+  ],
+
+  roads: [
+    { id: 'R-ENTRY', x: 14,  y: -22, w: 9,   h: 16 },
+    { id: 'R-SOUTH', x: -16, y: -8,  w: 104, h: 7  },
+    { id: 'R-WEST',  x: -16, y: -8,  w: 7,   h: 62 },
+    { id: 'R-NORTH', x: -16, y: 40,  w: 104, h: 7  },
+    { id: 'R-EAST',  x: 81,  y: -8,  w: 7,   h: 55 },
+    /* added 17 Nov 2026 with the second guard room: the lorry route from the north road up to
+       the dispatch gate G3 (x 29.5..38.5 on the north fence). Without it the gate stood at the
+       end of eleven metres of nothing. */
+    { id: 'R-DISPATCH', x: 29.5, y: 47, w: 9, h: 11 }
+  ],
+
+  parking: [
+    /* starts east of the pedestrian walkway, so no bay reaches the personnel gate */
+    { id: 'P-VIS',   x: 36,  y: -20, w: 22, h: 11, bays: 8,
+      name: 'Visitor parking', name_ar: 'مواقف الزوار' },
+    { id: 'P-STAFF', x: -22, y: 2,   w: 11, h: 30, bays: 12,
+      name: 'Staff parking', name_ar: 'مواقف الموظفين' }
+  ],
+
+  docks: [
+    { id: 'DK-IN',  x: -12, y: 2,  w: 10, h: 10, serves: 'D1',
+      name: 'Receiving', name_ar: 'الاستلام' },
+    { id: 'DK-OUT', x: 2,   y: 38, w: 14, h: 10, serves: 'D2',
+      name: 'Dispatch', name_ar: 'الشحن' }
+  ],
+
+  yard: [
+    /* x 76 put it a metre inside R-EAST; the incomer now stands clear of the road */
+    { kind: 'substation', x: 74,  y: 2,  w: 6,   h: 4,   z: 3.0, name: 'Main incomer / substation', name_ar: 'محطة التغذية الرئيسية' },
+    { kind: 'dieseltank', x: 76,  y: 8,  w: 3,   h: 3,   z: 2.4, name: 'Diesel tank', name_ar: 'خزان الديزل' },
+    { kind: 'scrapbin',   x: 76,  y: 14, w: 5,   h: 2.5, z: 1.6, name: 'Scrap skip', name_ar: 'حاوية السكراب' },
+    { kind: 'waterTank',  x: 76,  y: 19, w: 3.5, h: 3.5, z: 4.0, name: 'Water tank', name_ar: 'خزان المياه' },
+    { kind: 'trailer',    x: 4,   y: 40, w: 13,  h: 2.6, z: 3.6, name: 'Trailer at dispatch', name_ar: 'مقطورة الشحن', load: 'product' },
+    { kind: 'trailer',    x: -11, y: 3,  w: 2.6, h: 12,  z: 3.6, name: 'Trailer at receiving', name_ar: 'مقطورة الاستلام', load: 'sheet' }
+  ],
+
+  /* the security layer, made visible. 15 Nov 2026: placement is no longer a hand arrangement. The eight
+     named cameras (corners, gates, docks) are fixed; the rest were added by a greedy fill until the fence
+     line and the yard grid were covered (yard.js computes and shows the result, blind tiles included).
+     Still a PLANNING layout - lens, mounting height and obstructions belong to a hardware survey. */
+  cameraPoles: [
+    { id: 'CP1', x: -22, y: -20, z: 6.0, aim: [8, 10], reach: 38, covers: 'SW corner, front and west fence', covers_ar: 'الزاوية الجنوبية الغربية' },
+    { id: 'CP2', x: 94, y: -20, z: 6.0, aim: [64, 10], reach: 38, covers: 'SE corner, front and east fence', covers_ar: 'الزاوية الجنوبية الشرقية' },
+    { id: 'CP3', x: -22, y: 56, z: 6.0, aim: [8, 26], reach: 38, covers: 'NW corner, dispatch yard', covers_ar: 'الزاوية الشمالية الغربية وساحة الشحن' },
+    { id: 'CP4', x: 94, y: 56, z: 6.0, aim: [64, 26], reach: 38, covers: 'NE corner', covers_ar: 'الزاوية الشمالية الشرقية' },
+    { id: 'CP5', x: 24, y: -16, z: 5.0, aim: [18, -22], reach: 14, covers: 'Main gate + barrier', covers_ar: 'البوابة الرئيسية والحاجز' },
+    { id: 'CP6', x: 34, y: -16, z: 5.0, aim: [32, -22], reach: 14, covers: 'Personnel gate and walkway', covers_ar: 'بوابة الأفراد والممشى' },
+    { id: 'CP7', x: 1, y: 39, z: 5.0, aim: [8, 44], reach: 16, covers: 'Dispatch dock', covers_ar: 'ساحة الشحن' },
+    { id: 'CP8', x: -10, y: 1, z: 5.0, aim: [-6, 7], reach: 14, covers: 'Receiving dock', covers_ar: 'ساحة الاستلام' },
+    { id: 'CP9', x: 56, y: 56.5, z: 6.0, aim: [36, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP10', x: 20, y: -20.5, z: 6.0, aim: [40, -0.5], reach: 38, covers: 'Front yard and parking', covers_ar: 'الساحة الأمامية والمواقف' },
+    { id: 'CP11', x: 2, y: -21.4, z: 6.0, aim: [-18, -21.4], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    { id: 'CP12', x: 2, y: 56.5, z: 6.0, aim: [-18, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP13', x: 68, y: -20.5, z: 6.0, aim: [88, -20.5], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    { id: 'CP14', x: 68, y: 56.5, z: 6.0, aim: [88, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP15', x: 74, y: 56.5, z: 6.0, aim: [54, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP16', x: 38, y: -20.5, z: 6.0, aim: [18, -20.5], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    { id: 'CP17', x: 94.5, y: -8, z: 6.0, aim: [94.5, 12], reach: 38, covers: 'East fence', covers_ar: 'السور الشرقي' },
+    { id: 'CP18', x: -22.5, y: -8, z: 6.0, aim: [-22.5, 12], reach: 38, covers: 'West fence', covers_ar: 'السور الغربي' },
+    { id: 'CP19', x: -4, y: 56.5, z: 6.0, aim: [16, 56.5], reach: 38, covers: 'North fence', covers_ar: 'السور الشمالي' },
+    { id: 'CP20', x: 32, y: -20.5, z: 6.0, aim: [52, -20.5], reach: 38, covers: 'South fence', covers_ar: 'السور الجنوبي' },
+    /* added with the second guard room: the dispatch gate had no camera of its own either */
+    { id: 'CP21', x: 28.5, y: 52.5, z: 5.0, aim: [34, 58], reach: 16, covers: 'Dispatch gate and its guard room', covers_ar: 'بوابة الشحن وغرفة حراستها' }
+  ],
+
+  /* indoor cameras ADDED to module A2's own thirteen (layers.json cameras.units), placed the same way:
+     a greedy fill of whatever the hall floor grid still had uncovered. Domes look straight down. */
+  cameraIndoorExtra: [
+    { id: 'C14', x: 63, y: 8, z: 5.0, aim: [63, 8], reach: 8.5, zone: 'PNT' },
+    { id: 'C15', x: 33, y: 13, z: 5.0, aim: [33, 13], reach: 8.5, zone: 'FAB' },
+    { id: 'C16', x: 23, y: 33, z: 5.0, aim: [23, 33], reach: 8.5, zone: 'OFF' },
+    { id: 'C17', x: 38, y: 28, z: 5.0, aim: [38, 28], reach: 8.5, zone: 'ASM' },
+    { id: 'C18', x: 8, y: 13, z: 5.0, aim: [8, 13], reach: 8.5, zone: 'RAW' },
+    { id: 'C19', x: 63, y: 23, z: 5.0, aim: [63, 23], reach: 8.5, zone: 'ELP' },
+    { id: 'C20', x: 8, y: 28, z: 5.0, aim: [8, 28], reach: 8.5, zone: 'FG' },
+    { id: 'C21', x: 63, y: 33, z: 5.0, aim: [63, 33], reach: 8.5, zone: 'CMP' },
+    { id: 'C22', x: 8, y: 3, z: 5.0, aim: [8, 3], reach: 8.5, zone: 'RAW' },
+    { id: 'C23', x: 28, y: 13, z: 5.0, aim: [28, 6], reach: 15, zone: 'FAB' },
+    { id: 'C24', x: 58, y: 8, z: 5.0, aim: [65, 8], reach: 15, zone: 'PNT' },
+    { id: 'C25', x: 13, y: 28, z: 5.0, aim: [6, 28], reach: 15, zone: 'FG' }
+  ],
+
+  /* ADMINISTRATION BUILDING.
+     16 Nov 2026 (Jamal): it used to be a thin open-topped box stuck to the hall's east wall - a
+     service position, and it did not read as an office building. An administration block belongs
+     at the front, beside the main gate, where visitors arrive. It is now TWO STOREYS west (left)
+     of the main gate G1, with its own forecourt, entrance canopy, signage band, stair core and
+     roof plant. Ground floor: reception + the board room with the wall screen. First floor: the
+     open office. Open-topped per floor so both can be seen from above.
+
+     16 Nov 2026, second pass (Jamal): "the administration building is directly on the main gate.
+     If it stays on the same side but you push it into the corner, the corner is better."
+     He is right and it is the normal arrangement: an office block sitting on the gate fights the
+     truck sweep and puts a glass front where the lorries turn. It is now in the SOUTH-WEST
+     CORNER of the plot, same side, clear of the entry road (R-ENTRY, x 14..23) and of the gate
+     leaf, with the entrance still facing east toward the gate so a visitor arriving at G1 drives
+     the front road and reaches the canopy head on. */
+  admin: {
+    x: -19, y: -19.5, w: 14, h: 10.5, z: 7.2, floors: 2, floorH: 3.4,
+    entrance: 'E',                               /* the side the canopy and the doors are on - faces the gate */
+    name: 'Administration', name_ar: 'مبنى الإدارة'
+  },
+  adminForecourt: { x: -21, y: -9, w: 18, h: 3.4 },   /* paved walk + drop-off between the building and the south road */
+
+  /* ================= THE PEDESTRIAN ROUTE =================
+     16 Nov 2026 (Jamal): "the personnel gate - the people are in front of the parking! How is
+     that supposed to work?" It was: G2 sat at x 46, which is the middle of the visitor parking
+     bays, so anybody walking in stepped straight into a reversing car and then had to cross the
+     whole forecourt with no marked route.
+     Three things fixed together, which is the only way this one can be fixed:
+       - G2 moves to x 32, immediately beside the guard post (x 26..30.5) - a personnel gate
+         belongs where the guard can see who comes through it;
+       - the visitor parking starts at x 36 instead of x 30, so no bay touches the gate;
+       - a marked, railed WALKWAY runs from the gate up to the front road and then west along it
+         to the administration entrance, so the route from the turnstile to a desk never crosses
+         a vehicle lane unprotected.
+     yard.js draws these as a tinted strip with a rail on the traffic side.
+
+     A RAIL MUST NOT CROSS A ROAD. The first version of the front walkway ran unbroken from
+     x -4 to x 31 with a rail along its north edge - straight across R-ENTRY, the lorry route in
+     from the main gate. A continuous guardrail across a traffic lane is not a safety feature,
+     it is a barrier, and it would have been built. The walk is in two railed runs now with a
+     MARKED CROSSING between them: no rail, zebra bars on the tarmac, which is what a plant
+     actually does where a footway meets a vehicle lane. Found by the geometry audit, not by eye. */
+  walkways: [
+    { id: 'W-GATE',   x: 30.8, y: -22,   w: 2.4,  h: 13.4, rail: 'both',
+      name: 'Pedestrian route from the personnel gate', name_ar: 'ممشى من بوابة الأفراد' },
+    { id: 'W-FRONT-E', x: 23.2, y: -10.6, w: 10.0, h: 2.4, rail: 'N',
+      name: 'Front walkway, gate side', name_ar: 'ممشى الواجهة — جهة البوابة' },
+    { id: 'W-CROSS',   x: 13.8, y: -10.6, w: 9.4,  h: 2.4, crossing: true,
+      name: 'Marked crossing over the entry road', name_ar: 'معبر مخطّط فوق طريق الدخول' },
+    { id: 'W-FRONT-W', x: -4,   y: -10.6, w: 17.8, h: 2.4, rail: 'N',
+      name: 'Front walkway to administration', name_ar: 'ممشى الواجهة للإدارة' }
+  ],
+
+  /* live screens in the plant. kind = which board they show (dash.js drawScreen); lens = what a click opens */
+  screens: [
+    { id: 'TV1', x: 24, y: 18, z: 4.3, w: 3.2, kind: 'andon', lens: 'prod' },
+    { id: 'TV2', x: 50, y: 18, z: 4.3, w: 3.2, kind: 'andon', lens: 'prod' }
+  ],
+
+  /* site events that belong to the yard, not to the simulator's hall scenario. */
+  siteEvents: [],
+
+  /* ================= VIOLATIONS =================
+     16 Nov 2026 (Jamal): "the trailer is parked wrong on purpose, and the model shows nothing -
+     no red, no box, nothing that says VIOLATION."
+     A violation is not the same thing as a safety EVENT. An event is a moment the system caught
+     (a truck and a person in the same lane section); it flashes and it is gone. A violation is a
+     STANDING condition that stays wrong until somebody moves something - and it must be visible
+     as long as it is standing, on the object itself.
+     So each one carries the box it is wrong inside: the model draws a red cage around that box,
+     a hanging tag with its code, and the camera that sees it. open/close are minutes of the demo
+     day; a violation with no `close` stands all day.
+
+     kind drives the icon and the rule text. sev: hi (stop now) | md (fix today) | lo (housekeeping).
+     Every one of these is a DEMO SCENARIO, not an observation - the safety panel says so.
+
+     16 Nov 2026, second pass (Jamal): "the trailer has to carry a red mark IN THE SAFETY LENS.
+     The mark is static, the warning is not even red, and it is fixed in every lens."
+     Two separate things were wrong and they are fixed separately:
+       SEVERITY   blocking a FIRE LANE is not a fix-today matter. It is sev: hi, which is what
+                  makes the cage red and makes it pulse. md was simply the wrong grading.
+       OWNERSHIP  `owners` is the list of lenses whose job this violation is. The model draws it
+                  at full strength in an owning lens and does not draw it at all in the others -
+                  a violation is not a watermark, it belongs to whoever has to act on it.
+                  app.js reads this; no lens id is hard-coded there. */
+  violations: [
+    { id: 'V1', kind: 'vehicle_blocking', sev: 'hi', open: 96, zone: 'YARD', cam: 'CP8',
+      owners: ['safety', 'security', 'ops', 'owner', 'warehouse'],
+      box: { x: -11.4, y: 2.6, w: 3.4, h: 12.8, z: 4.0 },
+      code: 'YRD-02',
+      what: 'Trailer parked across the staff parking bays and the fire lane',
+      what_ar: 'مقطورة واقفة على مواقف الموظفين وعلى مسلك الإطفاء',
+      rule: 'Fire lane and marked bays must stay clear', rule_ar: 'مسلك الإطفاء والمواقف المخطّطة يجب أن تبقى خالية',
+      fix: 'Move the trailer onto the receiving apron', fix_ar: 'انقل المقطورة إلى ساحة الاستلام' },
+
+    /* 17 Nov 2026: moved, and the move was found by the new hall geometry audit rather than by
+       eye. The box used to run x 1.4..4.4 at y 33.2..34.8 - INSIDE the crane's load lane
+       (x 4..56 on lane y 34.5), so the 5 t load swept through the very stack this violation
+       marks. It also sat in the north-west corner, nowhere near the route it names. It is now
+       in front of the personnel door D3, standing on the hatched keep-clear square the 5S
+       layer paints there, which is what "stacked on the emergency exit route" means. */
+    { id: 'V2', kind: 'obstructed_exit', sev: 'hi', open: 150, close: 690, zone: 'FG', cam: 'C20',
+      owners: ['safety', 'ops', 'owner', 'warehouse', 'prod', 'lean'],
+      box: { x: 1.0, y: 23.3, w: 2.6, h: 2.8, z: 1.3 },
+      code: 'EXT-01',
+      what: 'Finished panels stacked on the emergency exit route',
+      what_ar: 'لوحات جاهزة مصفوفة على طريق مخرج الطوارئ',
+      rule: 'Exit routes keep 1.2 m clear at all times', rule_ar: 'ممرات المخارج يجب أن تبقى خالية بعرض 1.2 متر دائماً',
+      fix: 'Clear the route; stage on the marked floor square', fix_ar: 'أخلِ الممر وصُفّ على المربع المخطّط' },
+
+    { id: 'V3', kind: 'blocked_panel', sev: 'md', open: 234, zone: 'UTL', cam: 'C24',
+      owners: ['safety', 'maint', 'energy', 'ops', 'owner'],
+      box: { x: 65.2, y: 6.4, w: 2.2, h: 1.2, z: 1.9 },
+      code: 'ELC-03',
+      what: 'Working clearance in front of the distribution board is blocked',
+      what_ar: 'مسافة العمل أمام لوحة التوزيع مسدودة',
+      rule: 'Keep 0.9 m working clearance in front of live boards', rule_ar: 'اترك 0.9 متر خالية أمام اللوحات المكهربة',
+      fix: 'Remove the stored items from the clearance zone', fix_ar: 'أزل الأغراض المخزّنة من منطقة المسافة' },
+
+    /* ---------------------------------------------------------------------------------------
+       17 Nov 2026 (Jamal): "I want a wrong practice like this, caught, in EVERY area - safety
+       has a couple, security too, and put somebody walking inside the plant unauthorised."
+       Three violations covered safety, the yard and the electrical board; nine domains had
+       nothing, which made the product look like a safety camera rather than a plant system.
+       There are twelve now and EVERY LENS THAT OWNS PEOPLE OWNS AT LEAST ONE, so a buyer in
+       any chair sees the thing his own department would be asked about.
+       Each still declares its `owners`, so it is drawn at full strength in the lenses whose job
+       it is and NOT AT ALL in the others. Severity is graded three ways now, because grading
+       everything red is the same as grading nothing: hi = stop now, md = fix today,
+       lo = housekeeping. Four of the twelve are hi; that is the point of a grade.
+       V10 is the first MOVING violation: it carries `follow`, so the cage, the ring and the tag
+       are parented to a person and travel with him instead of sitting on a box. A trespasser is
+       not a standing condition in a place - he is a standing condition wherever he happens to
+       be, and a system that can only mark furniture would miss him.
+       Every box below was checked against layout.json assets, props, aisles and the crane load
+       lane before it was written. Every one of these is a DEMO SCENARIO, not an observation.
+       --------------------------------------------------------------------------------------- */
+
+    { id: 'V4', kind: 'ppe', sev: 'hi', open: 168, close: 258, zone: 'FAB', cam: 'C15',
+      owners: ['safety', 'prod', 'supervisor', 'owner', 'ops'],
+      box: { x: 27.0, y: 7.4, w: 1.4, h: 1.4, z: 1.9 },
+      code: 'PPE-01',
+      what: 'Welding at station 2 with the screen pushed aside and no face shield',
+      what_ar: 'لحام عند المحطة 2 والستارة مزاحة وبلا واقي وجه',
+      rule: 'Arc work needs the screen in place and a face shield worn', rule_ar: 'عمل القوس يتطلب الستارة في موضعها وواقي وجه',
+      fix: 'Stop the arc, set the screen, issue the shield', fix_ar: 'أوقف القوس، وأعد الستارة، وسلّمه الواقي' },
+
+    { id: 'V5', kind: 'untested_batch', sev: 'md', open: 288, zone: 'QC', cam: 'C08',
+      owners: ['quality', 'prod', 'ops', 'owner', 'warehouse'],
+      box: { x: 17.4, y: 21.0, w: 1.8, h: 1.4, z: 1.5 },
+      code: 'QAL-02',
+      what: 'Panels staged on the dispatch side of test with no test stamp',
+      what_ar: 'لوحات مصفوفة على جهة الشحن من الفحص وبدون ختم فحص',
+      rule: 'Nothing leaves test unstamped', rule_ar: 'لا يخرج شيء من الفحص بلا ختم',
+      fix: 'Hold the batch, test it, stamp it', fix_ar: 'أوقف الدفعة، وافحصها، ثم اختمها' },
+
+    { id: 'V6', kind: 'calibration', sev: 'md', open: 0, zone: 'QC', cam: 'C08',
+      owners: ['quality', 'maint', 'ops'],
+      box: { x: 19.0, y: 23.0, w: 4.0, h: 3.0, z: 2.0 },
+      code: 'CAL-01',
+      what: 'HV test set calibration certificate expired',
+      what_ar: 'شهادة معايرة جهاز فحص الضغط العالي منتهية',
+      rule: 'A measuring instrument out of calibration measures nothing', rule_ar: 'جهاز قياس خارج المعايرة لا يقيس شيئاً',
+      fix: 'Send it for calibration; use the second set meanwhile', fix_ar: 'أرسله للمعايرة واستخدم الجهاز الثاني ريثما يعود' },
+
+    { id: 'V7', kind: 'wip_over_limit', sev: 'lo', open: 330, zone: 'ASM', cam: 'C17',
+      owners: ['lean', 'prod', 'supervisor', 'warehouse'],
+      box: { x: 37.4, y: 26.0, w: 2.2, h: 2.2, z: 1.6 },
+      code: 'LEN-03',
+      what: 'WIP stacked off its marked square and above the limit at assembly',
+      what_ar: 'عمل تحت التشغيل مصفوف خارج مربعه المخطّط وفوق الحد عند التجميع',
+      rule: 'Everything stands on its marked footprint, and the square is the limit', rule_ar: 'كل شيء يوضع على مربعه المخطّط، والمربع هو الحد',
+      fix: 'Pull the overflow back to the supermarket', fix_ar: 'أعد الفائض إلى السوبرماركت' },
+
+    { id: 'V8', kind: 'tools_off_board', sev: 'lo', open: 60, close: 606, zone: 'MNT', cam: 'C16',
+      owners: ['lean', 'maint', 'supervisor'],
+      box: { x: 29.2, y: 31.1, w: 1.8, h: 0.8, z: 1.2 },
+      code: 'LEN-04',
+      what: 'Three outlines empty on the workshop shadow board, tools left on the bench',
+      what_ar: 'ثلاثة مواضع خالية على لوحة الظل في الورشة، والعدّة متروكة على الطاولة',
+      rule: 'A tool lives on its outline, so a missing one is a hole you can see', rule_ar: 'موضع العدّة على رسمها، فالناقصة يظهر مكانها فارغاً',
+      fix: 'Return the three tools to the board at the end of the job', fix_ar: 'أعد العدد الثلاث إلى اللوحة عند انتهاء المهمة' },
+
+    { id: 'V9', kind: 'air_leak', sev: 'md', open: 0, zone: 'UTL', cam: 'C04',
+      owners: ['energy', 'maint', 'lean', 'ops', 'owner'],
+      box: { x: 67.0, y: 4.6, w: 1.4, h: 1.2, z: 2.2 },
+      code: 'ENR-02',
+      what: 'Compressed air leaking on the ring main at the compressor header',
+      what_ar: 'تسرّب هواء مضغوط على الخط الرئيسي عند هيدر الضاغط',
+      rule: 'Compressed air is the most expensive utility in the plant to waste', rule_ar: 'الهواء المضغوط أغلى مرفق في المصنع يمكن إهداره',
+      fix: 'Clamp and reseal the header joint at the next stop', fix_ar: 'أحكم الربط وأعد إحكام وصلة الهيدر عند أول توقف' },
+
+    /* THE MOVING ONE. follow names a tagged person (people.json posts.roam), and yard.js
+       parents the whole mark to him. open/close are the minutes he is inside. */
+    { id: 'V10', kind: 'unauthorised_person', sev: 'hi', open: 312, close: 474, zone: 'A-MAIN', cam: 'C12',
+      follow: 'INTRUDER',
+      owners: ['security', 'safety', 'owner', 'ops'],
+      box: { x: 0, y: 0, w: 1.3, h: 1.3, z: 1.9 },
+      where: 'walking the main aisle and the north bay, unescorted',
+      where_ar: 'يتجوّل في الممر الرئيسي والبَي الشمالي بلا مرافق',
+      code: 'SEC-04',
+      what: 'A person on the floor with no badge, no helmet and no escort',
+      what_ar: 'شخص على الأرض بلا بطاقة ولا خوذة ولا مرافق',
+      rule: 'Nobody walks the floor without a badge, PPE and an escort', rule_ar: 'لا يتحرك أحد على الأرض بلا بطاقة ومعدات وقاية ومرافق',
+      fix: 'Intercept him, walk him to reception, log the entry he came through', fix_ar: 'أوقفه، وأعده إلى الاستقبال، وسجّل من أين دخل' },
+
+    { id: 'V11', kind: 'gate_unattended', sev: 'md', open: 420, close: 540, zone: 'YARD', cam: 'CP21',
+      owners: ['security', 'warehouse', 'ops', 'owner'],
+      box: { x: 29.5, y: 56.6, w: 9.0, h: 1.6, z: 2.6 },
+      code: 'SEC-05',
+      what: 'Dispatch gate left open and the barrier up with no lorry at it',
+      what_ar: 'بوابة الشحن متروكة مفتوحة والحاجز مرفوع ولا توجد شحنة قائمة',
+      rule: 'The gate the stock leaves through stays shut between lorries', rule_ar: 'البوابة التي تخرج منها البضاعة تبقى مغلقة بين الشحنات',
+      fix: 'Drop the barrier and shut the gate until the next lorry is booked in', fix_ar: 'أنزل الحاجز وأغلق البوابة حتى وصول الشحنة التالية' },
+
+    { id: 'V12', kind: 'aisle_blocked', sev: 'md', open: 210, zone: 'WIR', cam: 'C13',
+      owners: ['warehouse', 'safety', 'prod', 'lean', 'ops'],
+      box: { x: 45.6, y: 19.0, w: 2.4, h: 1.6, z: 1.4 },
+      code: 'MAT-06',
+      what: 'Sheet stock stored on the edge of the main aisle',
+      what_ar: 'صاج مخزّن على حرف الممر الرئيسي',
+      rule: 'The main aisle is 3.6 m and stays 3.6 m', rule_ar: 'الممر الرئيسي 3.6 متر ويبقى 3.6 متر',
+      fix: 'Move it onto a marked position in the supermarket', fix_ar: 'انقله إلى موقع مخطّط في السوبرماركت' }
+  ],
+
+  /* ================= THE RECORDER =================
+     The security lens kept claiming 45 cameras and never said where any of it is recorded.
+     This is the NVR / VMS side, stated plainly because it is what a buyer asks about second.
+     retention_days and storage_tb are EXAMPLE figures sized from the channel count; the real
+     numbers come from a hardware quotation. */
+  recorder: {
+    rooms: [
+      { id: 'NVR-1', name: 'Server room, administration', name_ar: 'غرفة السيرفر — الإدارة',
+        x: -7.0, y: -14.2, channels: 24, role: 'Outdoor, gates and yard', role_ar: 'الساحة والبوابات والسور' },
+      { id: 'NVR-2', name: 'Panel room, production office', name_ar: 'غرفة اللوحات — مكتب الإنتاج',
+        x: 24.4, y: 33.6, channels: 24, role: 'Hall floor', role_ar: 'أرض الصالة' }
+    ],
+    retention_days: 30,
+    storage_tb: 24,
+    resolution: '4 MP · 15 fps',
+    sync: 'every clip is stamped with the same plant clock the machines use',
+    sync_ar: 'كل مقطع مختوم بساعة المصنع نفسها التي تعمل عليها الآلات',
+    example: true
+  },
+
+  /* ================= SYSTEM HEALTH =================
+     16 Nov 2026. The lens nobody asks for until the day a number is wrong and nobody can say
+     since when. Every figure on every other screen rests on a device still reporting; when one
+     goes quiet the honest answer is "this is not measured any more", never a stale last value
+     held on screen as if it were live.
+
+     The real version is a heartbeat per device. These three outages are a DECLARED DEMO
+     SCENARIO, in minutes of the demo day, and the panel says so. `affects` is how one gateway
+     takes several cameras with it - the thing a device list never shows and an operator always
+     discovers the hard way. */
+  systemHealth: {
+    heartbeat_s: 30,                     /* a device is called silent after 3 missed beats */
+    silent: [
+      { id: 'M05', kind: 'clamp', since: 402,
+        what: 'CT clamp stopped reporting', what_ar: 'الـ CT clamp توقف عن الإرسال',
+        effect: 'this machine has no state and no energy from 13:42 on - it is not "running", it is unknown',
+        effect_ar: 'هذه الآلة بلا حالة وبلا طاقة منذ 13:42 — ليست "تعمل"، بل مجهولة' },
+      { id: 'C17', kind: 'camera', since: 188,
+        what: 'Camera offline', what_ar: 'الكاميرا متوقفة',
+        effect: 'the assembly bay loses its own view; the aisle camera still covers part of it',
+        effect_ar: 'منطقة التجميع فقدت كاميرتها؛ وكاميرا الممر ما زالت تغطي جزءاً منها' },
+      { id: 'GW-2', kind: 'gateway', since: 548, affects: ['C19', 'C21', 'C25'],
+        what: 'Edge gateway unreachable', what_ar: 'الـ gateway غير متصل',
+        effect: 'three cameras behind it went with it - one device, three blind zones',
+        effect_ar: 'ثلاث كاميرات خلفه توقفت معه — جهاز واحد، وثلاث مناطق عمياء' }
+    ],
+    gateways: [
+      { id: 'GW-1', name: 'Gateway, fabrication bay', name_ar: 'Gateway — بَي التشكيل', x: 34, y: 14 },
+      { id: 'GW-2', name: 'Gateway, assembly bay', name_ar: 'Gateway — بَي التجميع', x: 41, y: 20 },
+      { id: 'GW-3', name: 'Gateway, yard', name_ar: 'Gateway — الساحة', x: 76, y: 24 }
+    ],
+    example: true
+  },
+
+  trees: [
+    [28, -21], [34, -21], [40, -21], [52, -21], [58, -21],
+    [-20, -4], [-20, 36], [92, -4], [92, 30], [64, -21]
+  ]
+};
 
 /* packages.js - THE THREE MODELS, and the one place that knows which one is switched on.
  *
@@ -2037,7 +2475,13 @@ window.TELMERA = window.TELMERA || {};
       }).join('') : empty(S('ui.no-changeover-so-far-today', ar)));
   }
 
-  function kaizenPanel(ar) {
+  /* THE MONEY RULE REACHES THE KAIZEN REGISTER TOO. The panel is shown on the owner's lens
+     (money) and on the lean lens (no money), and it was printing "SAR 7,200 a month" against
+     every improvement on both. One event, two renderings - the same fix as `why_nomoney` on
+     25 Nov: the reader without financial permission gets the improvement, its owner and its
+     state, and no riyal. Caught by the app harness the day the laptop started showing this
+     page. (26 Nov 2026) */
+  function kaizenPanel(ar, money) {
     var K = LN && LN.kaizen; if (!K) return '';
     var closed = K.raised_month ? K.done_month / K.raised_month : 0;
     return h4((S('ui.the-improvement-register-kaizen', ar)) + exTag(ar)) +
@@ -2046,8 +2490,9 @@ window.TELMERA = window.TELMERA || {};
            kpi(K.done_month, S('ui.done', ar), css('run')),
            kpi(pct(closed), S('ui.closure-rate', ar), closed >= (K.closed_rate_target || 0.7) ? css('run') : css('fault'))) +
       (K.top || []).map(function (x) {
+        var worth = !money ? '' : (x.saved ? 'SAR ' + num(x.saved) + (S('ui.a-month', ar)) : (S('ui.not-costed-yet', ar)));
         return evt(x.state === 'done' ? css('run') : css('setup'), (LF(x, 'what', ar)),
-          (x.saved ? 'SAR ' + num(x.saved) + (S('ui.a-month', ar)) : (S('ui.not-costed-yet', ar))) + ' · ' +
+          (worth ? worth + ' · ' : '') +
           L2(OWN[x.own] || OWN.prod, ar) + ' · ' + (x.state === 'done' ? (S('ui.implemented', ar)) : (S('ui.in-progress-2', ar))));
       }).join('');
   }
@@ -2149,7 +2594,7 @@ window.TELMERA = window.TELMERA || {};
                   kpi('SAR ' + num(e.standbySar), S('ui.burned-while-idle', ar), css('fault')),
                   kpi((q.fpy * 100).toFixed(1) + '%', S('ui.first-pass-yield', ar))) + B.worst(t, ar, true),
         today: h4(S('ui.who-owns-the-loss', ar)) + B.owners(p, ar, true),
-        record: recordPanel(ar, METRICS.owner) + kaizenPanel(ar) +
+        record: recordPanel(ar, METRICS.owner) + kaizenPanel(ar, true) +
                 (rangeDef().days <= 1 ? kpis(kpi('SAR ' + num(tot30), S('ui.total-last-30-days', ar), css('fault')), kpi('SAR ' + num(ss.avg * 26), S('ui.a-month-at-this-rate', ar))) : ''),
         act: h4(S('ui.the-three-things-to-fix', ar)) + B.top3(ar),
         note: S('ui.figures-use-the-14-scored-machines-unlogged-', ar) };
@@ -2308,7 +2753,7 @@ window.TELMERA = window.TELMERA || {};
              h4((S('ui.the-five-s-s-which-one-the-plant-is-weak-at', ar)) + exTag(ar)) + fiveSStepsPanel(ar) +
              h4((S('ui.5s-by-section-weakest-first', ar)) + exTag(ar)) + fiveSPanel(ar, 8),
         today: h4(S('ui.today-s-waste-and-where-each-line-comes-from', ar)) + wastePanel(t, ar),
-        record: recordPanel(ar, METRICS.lean) + kaizenPanel(ar),
+        record: recordPanel(ar, METRICS.lean) + kaizenPanel(ar, false),   /* the lean lens has no financial permission */
         act: taktPanel(t, ar) + smedPanel(t, ar) + standardPanel(ar),
         note: S('ui.changeover-waiting-breakdowns-unlogged-stops', ar) };
     },
@@ -3665,7 +4110,7 @@ window.TELMERA = window.TELMERA || {};
 })(window.TELMERA);
 </script>
 <script>window.TELMERA = window.TELMERA || {};
-window.TELMERA.profile = {"screen":"sc-phone","kpiMax":3,"nav":"bottom"};</script>
+window.TELMERA.profile = {"screen":"sc-phone","kpiMax":3,"nav":"bottom","dash":false};</script>
 <script>/* plant3d.js - THE PLANT IN THREE DIMENSIONS, INSIDE THE APP.
  *
  * This file is small and ships in index.html. What is big - three.js, scene.js and machines.js -
@@ -4027,6 +4472,7 @@ window.TELMERA = window.TELMERA || {};
   var lang = 'ar', IA = null, LENS = {}, booted = false, route = { k: 'home' }, showAll = false;
   function P() { return T.profile || { screen: 'sc-phone', kpiMax: 3, nav: 'bottom' }; }
   function wide() { return P().nav === 'side'; }
+  function desk() { return !!P().dash; }          /* the laptop shows the model's own dashboard */
 
   function S(k, v) { return T.i18n(k, lang === 'ar', v); }
   function ar() { return lang === 'ar'; }
@@ -4224,6 +4670,19 @@ window.TELMERA = window.TELMERA || {};
   }
 
   /* the laptop rail: on a mouse screen nothing should be two clicks away */
+  /* THE DESK TOOLBAR. The dashboard is a page about a MOMENT and a PERIOD, so both belong on
+     screen the whole time, not inside the plant page: dash.js reads the day clock and the range
+     on every repaint. The phone keeps its slider on the plant page only - there is no room. */
+  function deskbarHTML() {
+    if (!desk()) return '';
+    var t = T.day.t, cur = T.dash.getRange ? T.dash.getRange() : 'day';
+    var r = (T.ranges || []).map(function (x) {
+      return '<button data-range="' + x.id + '" aria-pressed="' + (x.id === cur) + '">' + esc(S(x.key)) + '</button>';
+    }).join('');
+    return '<div class="seg rangeSeg" role="group" aria-label="' + esc(S('app.time')) + '">' + r + '</div>'
+      + '<span class="dbT">' + S('app.time') + '</span><b class="num" id="tNow">' + T.dash.core.hhmm(t) + '</b>'
+      + '<input type="range" data-time min="0" max="839" step="1" value="' + Math.round(t) + '" aria-label="' + esc(S('app.time')) + '">';
+  }
   function railHTML() {
     var out = '<button class="railItem" data-nav="home"' + (route.k === 'home' ? ' aria-current="page"' : '') + '>'
             + S('app.home') + '</button>';
@@ -4257,7 +4716,16 @@ window.TELMERA = window.TELMERA || {};
     if (home || wide()) $('title').innerHTML = '<span class="wm"><b>T</b>ELMERA</span>';
     else $('title').textContent = route.k === 'plant' ? S('app.plant') : lensName(route.id);
     $('now').innerHTML = home ? nowStrip() : '';
-    $('tiles').innerHTML = home ? homeHTML() : (route.k === 'plant' ? plantHTML() : lensHTML(route.id));
+    if ($('deskbar')) { $('deskbar').innerHTML = deskbarHTML(); $('deskbar').hidden = !desk(); }
+    /* ON THE LAPTOP A LENS IS THE MODEL'S OWN PAGE. dash.js builds it - question, answer,
+       figures each clickable to where they come from, the hero chart, the advisor and the
+       30-day record - and paints it into #pgBody. We only decide which of the two containers
+       is on screen. Everything else (home, the plant) stays the app's. */
+    var onDash = desk() && route.k === 'lens' && T.dash.page && lensOf(route.id);
+    if ($('page')) $('page').hidden = !onDash;
+    $('tiles').hidden = !!onDash;
+    if (onDash) T.dash.page(lensOf(route.id), lang, null);
+    else $('tiles').innerHTML = home ? homeHTML() : (route.k === 'plant' ? plantHTML() : lensHTML(route.id));
     $('note').textContent = home ? S('app.stage-note') : '';
     var id = T.pkg ? T.pkg.id() : '', tier = T.pkg ? T.pkg.tier() : '';
     Array.prototype.forEach.call(document.querySelectorAll('[data-model]'), function (b) {
@@ -4321,6 +4789,7 @@ window.TELMERA = window.TELMERA || {};
         if ((x = c('[data-nav]')))   { var n = x.getAttribute('data-nav'); go(n === 'home' ? 'home' : n, n); return; }
         if ((x = c('[data-back]')))  { go('home'); return; }
         if ((x = c('[data-more]')))  { showAll = !showAll; render(); return; }
+        if ((x = c('[data-range]')))  { T.dash.setRange(x.getAttribute('data-range')); render(); return; }
         if ((x = c('[data-plant-view]'))) {
           var v = x.getAttribute('data-plant-view');
           if (T.plant3d) { if (v === '3d') T.plant3d.show(); else T.plant3d.plan(); }
@@ -4337,9 +4806,12 @@ window.TELMERA = window.TELMERA || {};
       document.addEventListener('input', function (e) {
         if (!e.target || !e.target.hasAttribute || !e.target.hasAttribute('data-time')) return;
         T.day.set(+e.target.value);
-        $('tNow').textContent = T.dash.core.hhmm(T.day.t);
-        $('planWrap').innerHTML = planHTML(); $('legend').innerHTML = legendHTML();
-        if (T.plant3d) T.plant3d.repaint();     /* the same minute, in the other view */
+        if ($('tNow')) $('tNow').textContent = T.dash.core.hhmm(T.day.t);
+        /* the same minute, everywhere it is shown: the plan, the 3D and the desk dashboard */
+        if ($('planWrap')) $('planWrap').innerHTML = planHTML();
+        if ($('legend')) $('legend').innerHTML = legendHTML();
+        if (T.plant3d) T.plant3d.repaint();
+        if (desk() && route.k === 'lens' && lensOf(route.id)) T.dash.page(lensOf(route.id), lang, null);
       });
 
       if (isIOS() && !standalone()) {
