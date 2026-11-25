@@ -3817,6 +3817,9 @@ window.TELMERA = window.TELMERA || {};
     var d0 = 120, need = 0, i, j, k, p = new THREE.Vector3();
     c.position.copy(tgt).addScaledVector(dir, d0);
     c.lookAt(tgt); c.updateMatrixWorld();
+    /* three.js refreshes matrixWorldInverse inside render(), not here, so the first version of
+       this measured the corners against the PREVIOUS pose and parked the camera 20 m too far */
+    c.matrixWorldInverse.copy(c.matrixWorld).invert();
     for (i = -1; i <= 1; i += 2) for (j = 0; j <= 1; j++) for (k = -1; k <= 1; k += 2) {
       p.set(i * hw, j * top, k * hh).applyMatrix4(c.matrixWorldInverse);
       need = Math.max(need, Math.abs(p.x) / ht + p.z, Math.abs(p.y) / vt + p.z);
